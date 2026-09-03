@@ -72,7 +72,7 @@ def main(argv):
 
     # read the CSV
     oin_packages = {}
-    with open(table_csv) as csv_file:
+    with open(table_csv, encoding='utf-8') as csv_file:
         csv_reader = csv.reader(csv_file)
         is_first = True
         for line in csv_reader:
@@ -90,7 +90,7 @@ def main(argv):
         # is stored to assist with the comparison.
         rpm_packages_seen = set()
 
-        with open(listing, 'r') as rpm_file:
+        with open(listing, 'r', encoding='utf-8') as rpm_file:
             package = ''
             version = ''
             release = ''
@@ -137,7 +137,7 @@ def main(argv):
         # instead.
         deb_packages_seen = set()
 
-        with open(listing, 'r') as deb_file:
+        with open(listing, 'r', encoding='utf-8') as deb_file:
             package = ''
             version = ''
             url = ''
@@ -174,7 +174,7 @@ def main(argv):
                     print(f'Version: {version}')
                     print(f'URL: {url}')
     elif args.listing_type.lower() == 'pip':
-        with open(listing, 'r') as pip_file:
+        with open(listing, 'r', encoding='utf-8') as pip_file:
             package = ''
             version = ''
             pip_license = ''
