@@ -35,6 +35,19 @@ $ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm
 
 It might be needed to adapt paths to point to the right locations.
 
+To print to a file add the `-o` parameter, for example:
+
+```
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.txt
+```
+
+By default the program will output in text format, but JSON and CSV are also supported, both as file output, as well as printed on the terminal:
+
+```
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.json --output-type=json
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.csv --output-type=csv
+```
+
 ## DEB
 
 ```
@@ -54,4 +67,3 @@ $ python package_nominations.py -l /tmp/pip -c table-13_2026-02-25.csv -t pip
 ## Shortcomings
 
 Some packages may have been renamed (for example: `pcre2`) so those are "false positives". This is not a concern, and you can just submit the output of this tool with such packages included. The OIN team will filter the output for you. 
-
