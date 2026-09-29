@@ -247,6 +247,24 @@ def main(argv):
                 sys.exit(1)
         else:
             print(json.dumps(not_found_packages, indent=4))
+    elif args.out_type == 'csv':
+        if args.out_path:
+            try:
+                with open(args.out_path, 'w', newline='') as csvfile:
+                    csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+                    csv_writer.writerow(['Name', 'Version', 'License', 'URL', 'Type'])
+                    for p in sorted(not_found_packages, key=lambda x: x['package']):
+                        csv_writer.writerow([p['package'], p['version'], p['license'],
+                                             p['url'], p['type']])
+            except Exception as e:
+                print(f'{e}, exiting.', file=sys.stderr)
+                sys.exit(1)
+        else:
+            csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_MINIMAL)
+            csv_writer.writerow(['Name', 'Version', 'License', 'URL', 'Type'])
+            for p in sorted(not_found_packages, key=lambda x: x['package']):
+                csv_writer.writerow([p['package'], p['version'], p['license'],
+                                     p['url'], p['type']])
 
 if __name__ == "__main__":
     main(sys.argv)
