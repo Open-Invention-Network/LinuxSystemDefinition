@@ -65,7 +65,12 @@ def main(argv):
     if args.out_type.lower() not in ['txt', 'json', 'csv']:
         parser.error("Unsupported file listing type")
 
-    # sanity checks for the listing file
+    if args.out_path:
+        out = pathlib.Path(args.out_path)
+        if out.exists():
+            parser.error(f"Path '{out}' already exists")
+
+    # checks for the listing file
     listing = pathlib.Path(args.listing)
     if not listing.exists():
         print(f"Path '{listing}' does not exist", file=sys.stderr)
@@ -74,7 +79,7 @@ def main(argv):
         print(f"Path '{listing}' is not a file", file=sys.stderr)
         sys.exit(1)
 
-    # sanity checks for the CSV
+    # checks for the CSV
     table_csv = pathlib.Path(args.table_csv)
     if not table_csv.exists():
         print(f"Path '{table_csv}' does not exist", file=sys.stderr)
