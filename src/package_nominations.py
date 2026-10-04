@@ -8,6 +8,7 @@
 
 import argparse
 import csv
+import json
 import pathlib
 import sys
 
@@ -38,6 +39,12 @@ def main(argv):
     parser.add_argument("-t", "--type", action="store", dest="listing_type",
                         help="File listing type (RPM, DEB, PIP), case insensitive")
 
+    parser.add_argument("-o", "--out", action="store", dest="out_path",
+                        help="Output file (or stdout)")
+
+    parser.add_argument("--output-type", action="store", dest="out_type",
+                        help="Output type (TXT, JSON, CSV), case insensitive, default: TXT")
+
     args = parser.parse_args()
 
     if not args.listing:
@@ -49,10 +56,21 @@ def main(argv):
     if not args.listing_type:
         parser.error("File listing type not provided")
 
+    if not args.out_type:
+        args.out_type = 'txt'
+
     if args.listing_type.lower() not in ['rpm', 'deb', 'pip']:
         parser.error("Unsupported file listing type")
 
-    # sanity checks for the listing file
+    if args.out_type.lower() not in ['txt', 'json', 'csv']:
+        parser.error("Unsupported file listing type")
+
+    if args.out_path:
+        out = pathlib.Path(args.out_path)
+        if out.exists():
+            parser.error(f"Path '{out}' already exists")
+
+    # checks for the listing file
     listing = pathlib.Path(args.listing)
     if not listing.exists():
         print(f"Path '{listing}' does not exist", file=sys.stderr)
@@ -61,7 +79,7 @@ def main(argv):
         print(f"Path '{listing}' is not a file", file=sys.stderr)
         sys.exit(1)
 
-    # sanity checks for the CSV
+    # checks for the CSV
     table_csv = pathlib.Path(args.table_csv)
     if not table_csv.exists():
         print(f"Path '{table_csv}' does not exist", file=sys.stderr)
@@ -84,6 +102,8 @@ def main(argv):
                                           'version_url': version_url, 'project_url': project_url,
                                           'package_url': purl}
 
+    not_found_packages = []
+
     if args.listing_type.lower() == 'rpm':
         # walk the RPM listing. Use the "Source RPM" attribute to filter
         # duplicates and to determine the package name. The "URL" attribute
@@ -94,8 +114,9 @@ def main(argv):
             package = ''
             version = ''
             release = ''
-            rpm_license = ''
+            package_license = ''
             url = ''
+            package_type = 'rpm'
             for line in rpm_file:
                 if line.startswith('Version'):
                     version = line.split(':', maxsplit=1)[-1].strip()
@@ -107,29 +128,23 @@ def main(argv):
                     if package in ALIASES:
                         package = ALIASES[package]
                 elif line.startswith('License'):
-                    rpm_license = line.split(':', maxsplit=1)[-1].strip()
+                    package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('URL'):
                     url = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Name'):
                     if package:
                         if package not in rpm_packages_seen:
                             if package.lower() not in oin_packages:
-                                print(f'Name: {package}')
-                                print(f'Version: {version}')
-                                print(f'License: {rpm_license}')
-                                print(f'URL: {url}\n')
+                                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
                         rpm_packages_seen.add(package)
                     package = ''
                     version = ''
                     release = ''
-                    rpm_license = ''
+                    package__license = ''
                     url = ''
             if package not in rpm_packages_seen:
                 if package.lower() not in oin_packages:
-                    print(f'Name: {package}')
-                    print(f'Version: {version}')
-                    print(f'License: {rpm_license}')
-                    print(f'URL: {url}\n')
+                    not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
 
     elif args.listing_type.lower() == 'deb':
         # walk the Deb listing. Use the "Package" attribute to determine
@@ -141,6 +156,8 @@ def main(argv):
             package = ''
             version = ''
             url = ''
+            package_license = ''
+            package_type = 'deb'
             for line in deb_file:
                 if line.startswith('Package:'):
                     if '(' in package:
@@ -152,9 +169,7 @@ def main(argv):
                     if package:
                         if package not in deb_packages_seen:
                             if package.lower() not in oin_packages:
-                                print(f'Name: {package}')
-                                print(f'Version: {version}')
-                                print(f'URL: {url}\n')
+                                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
                         deb_packages_seen.add(package)
 
                     # parse the package name, reset all other fields
@@ -170,44 +185,91 @@ def main(argv):
                     package = line.split(':', maxsplit=1)[-1].strip()
             if package and package not in deb_packages_seen:
                 if package.lower() not in oin_packages:
-                    print(f'Name: {package}')
-                    print(f'Version: {version}')
-                    print(f'URL: {url}')
+                    not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
     elif args.listing_type.lower() == 'pip':
         with open(listing, 'r', encoding='utf-8') as pip_file:
             package = ''
             version = ''
-            pip_license = ''
+            package_license = ''
             url = ''
+            package_type = 'pip'
             for line in pip_file:
                 if line.startswith('Name:'):
                     if package:
                         if package.lower() not in oin_packages:
                             # try 'python-{package}' as well
                             if f'python-{package.lower()}' not in oin_packages:
-                                print(f'Name: {package}')
-                                print(f'Version: {version}')
-                                print(f'License: {pip_license}')
-                                print(f'URL: {url}\n')
+                                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
 
                     # parse the package name, reset everything
                     package = line.split(':', maxsplit=1)[-1].strip()
                     version = ''
-                    pip_license = ''
+                    package_license = ''
                     url = ''
                 elif line.startswith('Home-page:'):
                     url = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('License'):
-                    pip_license = line.split(':', maxsplit=1)[-1].strip()
+                    package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
             if package:
                 if package.lower() not in oin_packages:
                     if f'python-{package.lower()}' not in oin_packages:
-                        print(f'Name: {package}')
-                        print(f'Version: {version}')
-                        print(f'License: {pip_license}')
-                        print(f'URL: {url}')
+                        not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+
+
+    if args.out_type == 'txt':
+        if args.out_path:
+            try:
+                with open(args.out_path, 'w', encoding='utf-8') as out_file:
+                    for p in sorted(not_found_packages, key=lambda x: x['package']):
+                        out_file.write(f"Name: {p['package']}")
+                        out_file.write('\n')
+                        out_file.write(f"Version: {p['version']}")
+                        out_file.write('\n')
+                        out_file.write(f"License: {p['license']}")
+                        out_file.write('\n')
+                        out_file.write(f"URL: {p['url']}")
+                        out_file.write('\n')
+                        out_file.write(f"Package type: {p['type']}\n\n")
+            except Exception as e:
+                print(f'{e}, exiting.', file=sys.stderr)
+                sys.exit(1)
+        else:
+            for p in sorted(not_found_packages, key=lambda x: x['package']):
+                print(f"Name: {p['package']}")
+                print(f"Version: {p['version']}")
+                print(f"License: {p['license']}")
+                print(f"URL: {p['url']}")
+                print(f"Package type: {p['type']}\n")
+    elif args.out_type == 'json':
+        if args.out_path:
+            try:
+                with open(args.out_path, 'w', encoding='utf-8') as out_file:
+                    out_file.write(json.dumps(not_found_packages, indent=4))
+            except Exception as e:
+                print(f'{e}, exiting.', file=sys.stderr)
+                sys.exit(1)
+        else:
+            print(json.dumps(not_found_packages, indent=4))
+    elif args.out_type == 'csv':
+        if args.out_path:
+            try:
+                with open(args.out_path, 'w', newline='') as csvfile:
+                    csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+                    csv_writer.writerow(['Name', 'Version', 'License', 'URL', 'Type'])
+                    for p in sorted(not_found_packages, key=lambda x: x['package']):
+                        csv_writer.writerow([p['package'], p['version'], p['license'],
+                                             p['url'], p['type']])
+            except Exception as e:
+                print(f'{e}, exiting.', file=sys.stderr)
+                sys.exit(1)
+        else:
+            csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_MINIMAL)
+            csv_writer.writerow(['Name', 'Version', 'License', 'URL', 'Type'])
+            for p in sorted(not_found_packages, key=lambda x: x['package']):
+                csv_writer.writerow([p['package'], p['version'], p['license'],
+                                     p['url'], p['type']])
 
 if __name__ == "__main__":
     main(sys.argv)
