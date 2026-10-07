@@ -48,6 +48,12 @@ $ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o
 $ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.csv --output-type=csv
 ```
 
+To create a CSV that can be directly sent to OIN with nominations use the `oin_csv` format:
+
+```
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.csv --output-type=oin_csv
+```
+
 ## DEB
 
 ```
