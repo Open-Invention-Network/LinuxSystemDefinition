@@ -10,6 +10,7 @@ import argparse
 import csv
 import json
 import pathlib
+import re
 import sys
 
 ALIASES = {'bind9': 'bind',
@@ -25,6 +26,7 @@ ALIASES = {'bind9': 'bind',
            'requests': 'python-requests',
           }
 
+
 def main(argv):
     parser = argparse.ArgumentParser()
 
@@ -35,6 +37,9 @@ def main(argv):
     parser.add_argument("-c", "--csv", action="store", dest="table_csv",
                         help="OIN Linux System Definition table in CSV",
                         metavar="CSV")
+
+    parser.add_argument("--new-versions", action="store_true", dest="new_versions",
+                        help="Report packages with newer versions")
 
     parser.add_argument("-t", "--type", action="store", dest="listing_type",
                         help="File listing type (RPM, DEB, PIP), case insensitive")
@@ -143,7 +148,12 @@ def main(argv):
                             if package.lower() not in oin_packages:
                                 not_found_packages.append({'package': package, 'version': version,
                                                            'license': package_license, 'type': package_type,
-                                                           'url': url, 'description': description})
+                                                           'url': url, 'description': description, 'status': 'new'})
+                            else:
+                                if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                                    not_found_packages.append({'package': package, 'version': version,
+                                                               'license': package_license, 'type': package_type,
+                                                               'url': url, 'description': description, 'status': 'update'})
                         rpm_packages_seen.add(package)
                     package = ''
                     version = ''
@@ -159,7 +169,12 @@ def main(argv):
                 if package.lower() not in oin_packages:
                     not_found_packages.append({'package': package, 'version': version,
                                                'license': package_license, 'type': package_type,
-                                               'url': url, 'description': description})
+                                               'url': url, 'description': description, 'status': 'new'})
+                else:
+                    if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                        not_found_packages.append({'package': package, 'version': version,
+                                                   'license': package_license, 'type': package_type,
+                                                   'url': url, 'description': description, 'status': 'update'})
 
     elif args.listing_type.lower() == 'deb':
         # walk the Deb listing. Use the "Package" attribute to determine
@@ -188,7 +203,12 @@ def main(argv):
                             if package.lower() not in oin_packages:
                                 not_found_packages.append({'package': package, 'version': version,
                                                            'license': package_license, 'type': package_type,
-                                                           'url': url, 'description': description})
+                                                           'url': url, 'description': description, 'status': 'new'})
+                            else:
+                                if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
+                                    not_found_packages.append({'package': package, 'version': version,
+                                                               'license': package_license, 'type': package_type,
+                                                               'url': url, 'description': description, 'status': 'update'})
                         deb_packages_seen.add(package)
 
                     # parse the package name, reset all other fields
@@ -202,6 +222,7 @@ def main(argv):
                     url = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
+                    deb_version = re.split(r'[+-]', version)[0]
                 elif line.startswith('Source:'):
                     package = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Description:'):
@@ -213,7 +234,13 @@ def main(argv):
                 if package.lower() not in oin_packages:
                     not_found_packages.append({'package': package, 'version': version,
                                                'license': package_license, 'type': package_type,
-                                               'url': url, 'description': description})
+                                               'url': url, 'description': description, 'status': 'new'})
+                else:
+                    if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
+                        not_found_packages.append({'package': package, 'version': version,
+                                                   'license': package_license, 'type': package_type,
+                                                   'url': url, 'description': description, 'status': 'update'})
+
     elif args.listing_type.lower() == 'pip':
         with open(listing, 'r', encoding='utf-8') as pip_file:
             package = ''
@@ -314,9 +341,6 @@ def main(argv):
                         'Description', 'Project', 'OSS Platform', 'TechArea', 'Old name']
         number = nominated_by = techarea = old_name = ''
 
-        # TODO: add versioning information to support 'UPDATE'
-        nomination_type = 'NOMINATED'
-
         nomination_comments = project_download_url = package_version_url = package_version_tag = ''
         project = oss_platform = tech_area = old_name = ''
         if args.out_path:
@@ -325,6 +349,10 @@ def main(argv):
                     csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
                     csv_writer.writerow(column_names)
                     for p in sorted(not_found_packages, key=lambda x: x['package']):
+                        if p['status'] == 'new':
+                            nomination_type = 'NOMINATED'
+                        elif p['status'] == 'update':
+                            nomination_type = 'UPDATE'
                         csv_writer.writerow([number, p['package'], nominated_by, nomination_type,
                                              nomination_comments, p['version'], p['license'],
                                              project_download_url, p['url'], package_version_url,
@@ -337,6 +365,10 @@ def main(argv):
             csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_MINIMAL)
             csv_writer.writerow(column_names)
             for p in sorted(not_found_packages, key=lambda x: x['package']):
+                if p['status'] == 'new':
+                    nomination_type = 'NOMINATED'
+                elif p['status'] == 'update':
+                    nomination_type = 'UPDATE'
                 csv_writer.writerow([number, p['package'], nominated_by, nomination_type, nomination_comments,
                                      p['version'], p['license'], project_download_url, p['url'], package_version_url,
                                      package_version_tag, p['description'], project, oss_platform, tech_area, old_name])
