@@ -10,7 +10,17 @@ import argparse
 import csv
 import json
 import pathlib
+import re
 import sys
+
+# RPM header lines look like "Name        : bash". Matching on the
+# padded key and colon avoids picking up Description text such as
+# "License for binaries is ..." as a field.
+RPM_FIELD = re.compile(r'^(Name|Version|Release|License|Source RPM|URL|Description)\s*:\s?(.*)$')
+
+def normalize_pip_name(name):
+    '''Normalize a Python package name as per PEP 503'''
+    return re.sub(r'[-_.]+', '-', name).lower()
 
 ALIASES = {'bind9': 'bind',
            'chardet': 'python-chardet',
@@ -62,8 +72,9 @@ def main(argv):
     if args.listing_type.lower() not in ['rpm', 'deb', 'pip']:
         parser.error("Unsupported file listing type")
 
-    if args.out_type.lower() not in ['txt', 'json', 'csv']:
-        parser.error("Unsupported file listing type")
+    args.out_type = args.out_type.lower()
+    if args.out_type not in ['txt', 'json', 'csv']:
+        parser.error("Unsupported output type")
 
     if args.out_path:
         out = pathlib.Path(args.out_path)
@@ -91,16 +102,22 @@ def main(argv):
     # read the CSV
     oin_packages = {}
     with open(table_csv, encoding='utf-8') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        is_first = True
+        # use the header row rather than relying on the column order,
+        # which depends on the export tool
+        csv_reader = csv.DictReader(csv_file)
+        if not csv_reader.fieldnames or 'name' not in csv_reader.fieldnames:
+            print(f"CSV '{table_csv}' has no 'name' column", file=sys.stderr)
+            sys.exit(1)
         for line in csv_reader:
-            if is_first:
-                is_first = False
-                continue
-            package_version, description, download_url, version_url, name, project_url, purl = line
-            oin_packages[name.lower()] = {'version': package_version, 'dl_url': download_url,
-                                          'version_url': version_url, 'project_url': project_url,
-                                          'package_url': purl}
+            oin_packages[line['name'].lower()] = {'version': line.get('package_version', ''),
+                                                  'dl_url': line.get('download_url', ''),
+                                                  'version_url': line.get('version_url', ''),
+                                                  'project_url': line.get('project_url', ''),
+                                                  'package_url': line.get('purl', '')}
+
+    # Python package names in the table are also matched after
+    # PEP 503 normalization (e.g. "typing_extensions" and "typing-extensions")
+    oin_pip_packages = {normalize_pip_name(name) for name in oin_packages}
 
     not_found_packages = []
 
@@ -117,21 +134,41 @@ def main(argv):
             package_license = ''
             url = ''
             package_type = 'rpm'
+            in_description = False
             for line in rpm_file:
-                if line.startswith('Version'):
-                    version = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('Release'):
-                    release = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('Source RPM'):
-                    avr = f'-{version}-{release}'
-                    package = line.split(':', maxsplit=1)[-1].strip()[:-8 - len(avr)]
-                    if package in ALIASES:
-                        package = ALIASES[package]
-                elif line.startswith('License'):
-                    package_license = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('URL'):
-                    url = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('Name'):
+                match = RPM_FIELD.match(line)
+                if not match:
+                    continue
+                field, value = match.group(1), match.group(2).strip()
+
+                # The Description is free text and is always the last
+                # field of a package, so skip everything until the next
+                # package starts.
+                if in_description and field != 'Name':
+                    continue
+
+                if field == 'Version':
+                    version = value
+                elif field == 'Release':
+                    release = value
+                elif field == 'Source RPM':
+                    # The source RPM is "name-version-release.src.rpm".
+                    # Version and release cannot contain '-', and can
+                    # differ from those of a subpackage (for example
+                    # device-mapper is built from lvm2), so use the
+                    # source RPM's own version. Packages without a source
+                    # RPM (such as gpg-pubkey) report "(none)" and are skipped.
+                    if value.endswith('.src.rpm') and value.count('-') >= 2:
+                        package, version, release = value[:-len('.src.rpm')].rsplit('-', maxsplit=2)
+                        if package in ALIASES:
+                            package = ALIASES[package]
+                elif field == 'License':
+                    package_license = value
+                elif field == 'URL':
+                    url = value
+                elif field == 'Description':
+                    in_description = True
+                elif field == 'Name':
                     if package:
                         if package not in rpm_packages_seen:
                             if package.lower() not in oin_packages:
@@ -140,9 +177,10 @@ def main(argv):
                     package = ''
                     version = ''
                     release = ''
-                    package__license = ''
+                    package_license = ''
                     url = ''
-            if package not in rpm_packages_seen:
+                    in_description = False
+            if package and package not in rpm_packages_seen:
                 if package.lower() not in oin_packages:
                     not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
 
@@ -152,25 +190,25 @@ def main(argv):
         # instead.
         deb_packages_seen = set()
 
+        def add_deb_package(package, version, url):
+            if '(' in package:
+                # sometimes some package names include a version
+                # number in brackets that should be cleaned up first
+                package = package.split('(')[0].strip()
+            if package in ALIASES:
+                package = ALIASES[package]
+            if package and package not in deb_packages_seen:
+                if package.lower() not in oin_packages:
+                    not_found_packages.append({'package': package, 'version': version, 'license': '', 'type': 'deb', 'url': url})
+                deb_packages_seen.add(package)
+
         with open(listing, 'r', encoding='utf-8') as deb_file:
             package = ''
             version = ''
             url = ''
-            package_license = ''
-            package_type = 'deb'
             for line in deb_file:
                 if line.startswith('Package:'):
-                    if '(' in package:
-                        # sometimes some package names include a version
-                        # number in brackets that should be cleaned up first
-                        package = package.split('(')[0].strip()
-                    if package in ALIASES:
-                        package = ALIASES[package]
-                    if package:
-                        if package not in deb_packages_seen:
-                            if package.lower() not in oin_packages:
-                                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
-                        deb_packages_seen.add(package)
+                    add_deb_package(package, version, url)
 
                     # parse the package name, reset all other fields
                     # for a new packages.
@@ -183,23 +221,27 @@ def main(argv):
                     version = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Source:'):
                     package = line.split(':', maxsplit=1)[-1].strip()
-            if package and package not in deb_packages_seen:
-                if package.lower() not in oin_packages:
-                    not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+            add_deb_package(package, version, url)
     elif args.listing_type.lower() == 'pip':
+        pip_packages_seen = set()
+
+        def add_pip_package(package, version, package_license, url):
+            name = normalize_pip_name(package)
+            if not package or name in pip_packages_seen:
+                return
+            pip_packages_seen.add(name)
+            # try 'python-{package}' as well
+            if name not in oin_pip_packages and f'python-{name}' not in oin_pip_packages:
+                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': 'pip', 'url': url})
+
         with open(listing, 'r', encoding='utf-8') as pip_file:
             package = ''
             version = ''
             package_license = ''
             url = ''
-            package_type = 'pip'
             for line in pip_file:
                 if line.startswith('Name:'):
-                    if package:
-                        if package.lower() not in oin_packages:
-                            # try 'python-{package}' as well
-                            if f'python-{package.lower()}' not in oin_packages:
-                                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+                    add_pip_package(package, version, package_license, url)
 
                     # parse the package name, reset everything
                     package = line.split(':', maxsplit=1)[-1].strip()
@@ -208,15 +250,14 @@ def main(argv):
                     url = ''
                 elif line.startswith('Home-page:'):
                     url = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('License'):
+                elif line.startswith('License-Expression:'):
+                    # an SPDX expression is preferred over the free text License field
+                    package_license = line.split(':', maxsplit=1)[-1].strip()
+                elif line.startswith('License:') and not package_license:
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
-            if package:
-                if package.lower() not in oin_packages:
-                    if f'python-{package.lower()}' not in oin_packages:
-                        not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
-
+            add_pip_package(package, version, package_license, url)
 
     if args.out_type == 'txt':
         if args.out_path:
@@ -255,7 +296,7 @@ def main(argv):
     elif args.out_type == 'csv':
         if args.out_path:
             try:
-                with open(args.out_path, 'w', newline='') as csvfile:
+                with open(args.out_path, 'w', newline='', encoding='utf-8') as csvfile:
                     csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
                     csv_writer.writerow(['Name', 'Version', 'License', 'URL', 'Type'])
                     for p in sorted(not_found_packages, key=lambda x: x['package']):
