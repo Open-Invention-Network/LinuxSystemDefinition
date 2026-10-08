@@ -252,12 +252,28 @@ def main(argv):
             for line in pip_file:
                 if line.startswith('Name:'):
                     if package:
+                        process = False
+                        status = None
+                        package_name = package.lower()
                         if package.lower() not in oin_packages:
                             # try 'python-{package}' as well
-                            if f'python-{package.lower()}' not in oin_packages:
-                                not_found_packages.append({'package': package, 'version': version,
-                                                           'license': package_license, 'type': package_type,
-                                                           'url': url, 'description': description})
+                            p_name = f'python-{package.lower()}'
+                            if p_name not in oin_packages:
+                                process = True
+                                status = 'new'
+                            else:
+                                if args.new_versions and oin_packages[p_name]['version'] < version:
+                                    package_name = p_name
+                                    process = True
+                                    status = 'update'
+                        else:
+                            if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                                process = True
+                                status = 'update'
+                        if process:
+                            not_found_packages.append({'package': package_name, 'version': version,
+                                                       'license': package_license, 'type': package_type,
+                                                       'url': url, 'description': description, 'status': status})
 
                     # parse the package name, reset everything
                     package = line.split(':', maxsplit=1)[-1].strip()
@@ -274,11 +290,26 @@ def main(argv):
                 elif line.startswith('Summary:'):
                     description = line.split(':', maxsplit=1)[-1].strip()
             if package:
+                process = False
+                status = None
+                package_name = package.lower()
                 if package.lower() not in oin_packages:
                     if f'python-{package.lower()}' not in oin_packages:
-                        not_found_packages.append({'package': package, 'version': version,
-                                                   'license': package_license, 'type': package_type,
-                                                   'url': url, 'description': description})
+                        process = True
+                        status = 'new'
+                    else:
+                        if args.new_versions and oin_packages[p_name]['version'] < version:
+                            package_name = p_name
+                            process = True
+                            status = 'update'
+                else:
+                    if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                        process = True
+                        status = 'update'
+                if process:
+                    not_found_packages.append({'package': package_name, 'version': version,
+                                               'license': package_license, 'type': package_type,
+                                               'url': url, 'description': description, 'status': status})
 
 
     if args.out_type == 'txt':
@@ -316,7 +347,7 @@ def main(argv):
         else:
             print(json.dumps(not_found_packages, indent=4))
     elif args.out_type == 'csv':
-        column_names = ['Name', 'Version', 'License', 'URL', 'Type']
+        column_names = ['Name', 'Version', 'License', 'URL', 'Status', 'Type']
         if args.out_path:
             try:
                 with open(args.out_path, 'w', newline='') as csvfile:
@@ -324,7 +355,7 @@ def main(argv):
                     csv_writer.writerow(column_names)
                     for p in sorted(not_found_packages, key=lambda x: x['package']):
                         csv_writer.writerow([p['package'], p['version'], p['license'],
-                                             p['url'], p['type']])
+                                             p['url'], p['status'], p['type']])
             except Exception as e:
                 print(f'{e}, exiting.', file=sys.stderr)
                 sys.exit(1)
@@ -333,7 +364,7 @@ def main(argv):
             csv_writer.writerow(column_names)
             for p in sorted(not_found_packages, key=lambda x: x['package']):
                 csv_writer.writerow([p['package'], p['version'], p['license'],
-                                     p['url'], p['type']])
+                                     p['url'], p['status'], p['type']])
     elif args.out_type == 'oin_csv':
         column_names = ['Number', 'Package Name', 'Nominated By...', 'Nomination type',
                         'Nominator comments', 'Version', 'License', 'Project Download URL',
