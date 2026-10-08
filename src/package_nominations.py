@@ -10,6 +10,7 @@ import argparse
 import csv
 import json
 import pathlib
+import re
 import sys
 
 ALIASES = {'bind9': 'bind',
@@ -25,6 +26,7 @@ ALIASES = {'bind9': 'bind',
            'requests': 'python-requests',
           }
 
+
 def main(argv):
     parser = argparse.ArgumentParser()
 
@@ -36,6 +38,9 @@ def main(argv):
                         help="OIN Linux System Definition table in CSV",
                         metavar="CSV")
 
+    parser.add_argument("--new-versions", action="store_true", dest="new_versions",
+                        help="Report packages with newer versions")
+
     parser.add_argument("-t", "--type", action="store", dest="listing_type",
                         help="File listing type (RPM, DEB, PIP), case insensitive")
 
@@ -43,7 +48,7 @@ def main(argv):
                         help="Output file (or stdout)")
 
     parser.add_argument("--output-type", action="store", dest="out_type",
-                        help="Output type (TXT, JSON, CSV), case insensitive, default: TXT")
+                        help="Output type (TXT, JSON, CSV, OIN_CSV), case insensitive, default: TXT")
 
     args = parser.parse_args()
 
@@ -62,7 +67,7 @@ def main(argv):
     if args.listing_type.lower() not in ['rpm', 'deb', 'pip']:
         parser.error("Unsupported file listing type")
 
-    if args.out_type.lower() not in ['txt', 'json', 'csv']:
+    if args.out_type.lower() not in ['txt', 'json', 'csv', 'oin_csv']:
         parser.error("Unsupported file listing type")
 
     if args.out_path:
@@ -116,7 +121,10 @@ def main(argv):
             release = ''
             package_license = ''
             url = ''
+            summary = ''
+            description = ''
             package_type = 'rpm'
+            in_description = False
             for line in rpm_file:
                 if line.startswith('Version'):
                     version = line.split(':', maxsplit=1)[-1].strip()
@@ -131,20 +139,42 @@ def main(argv):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('URL'):
                     url = line.split(':', maxsplit=1)[-1].strip()
+                elif line.startswith('Description'):
+                    description = line.split(':', maxsplit=1)[-1].strip()
+                    in_description = True
                 elif line.startswith('Name'):
                     if package:
                         if package not in rpm_packages_seen:
                             if package.lower() not in oin_packages:
-                                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+                                not_found_packages.append({'package': package, 'version': version,
+                                                           'license': package_license, 'type': package_type,
+                                                           'url': url, 'description': description, 'status': 'new'})
+                            else:
+                                if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                                    not_found_packages.append({'package': package, 'version': version,
+                                                               'license': package_license, 'type': package_type,
+                                                               'url': url, 'description': description, 'status': 'update'})
                         rpm_packages_seen.add(package)
                     package = ''
                     version = ''
                     release = ''
                     package__license = ''
                     url = ''
+                    summary = ''
+                    description = ''
+                    in_description = False
+                elif in_description:
+                    description += line
             if package not in rpm_packages_seen:
                 if package.lower() not in oin_packages:
-                    not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+                    not_found_packages.append({'package': package, 'version': version,
+                                               'license': package_license, 'type': package_type,
+                                               'url': url, 'description': description, 'status': 'new'})
+                else:
+                    if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                        not_found_packages.append({'package': package, 'version': version,
+                                                   'license': package_license, 'type': package_type,
+                                                   'url': url, 'description': description, 'status': 'update'})
 
     elif args.listing_type.lower() == 'deb':
         # walk the Deb listing. Use the "Package" attribute to determine
@@ -156,8 +186,10 @@ def main(argv):
             package = ''
             version = ''
             url = ''
+            description = ''
             package_license = ''
             package_type = 'deb'
+            in_description = False
             for line in deb_file:
                 if line.startswith('Package:'):
                     if '(' in package:
@@ -169,7 +201,14 @@ def main(argv):
                     if package:
                         if package not in deb_packages_seen:
                             if package.lower() not in oin_packages:
-                                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+                                not_found_packages.append({'package': package, 'version': version,
+                                                           'license': package_license, 'type': package_type,
+                                                           'url': url, 'description': description, 'status': 'new'})
+                            else:
+                                if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
+                                    not_found_packages.append({'package': package, 'version': version,
+                                                               'license': package_license, 'type': package_type,
+                                                               'url': url, 'description': description, 'status': 'update'})
                         deb_packages_seen.add(package)
 
                     # parse the package name, reset all other fields
@@ -177,34 +216,70 @@ def main(argv):
                     package = line.split(':', maxsplit=1)[-1].strip()
                     version = ''
                     url = ''
+                    description = ''
+                    in_description = False
                 elif line.startswith('Homepage:'):
                     url = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
+                    deb_version = re.split(r'[+-]', version)[0]
                 elif line.startswith('Source:'):
                     package = line.split(':', maxsplit=1)[-1].strip()
+                elif line.startswith('Description:'):
+                    description = line.split(':', maxsplit=1)[-1].strip()
+                    in_description = True
+                elif in_description:
+                    description += line
             if package and package not in deb_packages_seen:
                 if package.lower() not in oin_packages:
-                    not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+                    not_found_packages.append({'package': package, 'version': version,
+                                               'license': package_license, 'type': package_type,
+                                               'url': url, 'description': description, 'status': 'new'})
+                else:
+                    if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
+                        not_found_packages.append({'package': package, 'version': version,
+                                                   'license': package_license, 'type': package_type,
+                                                   'url': url, 'description': description, 'status': 'update'})
+
     elif args.listing_type.lower() == 'pip':
         with open(listing, 'r', encoding='utf-8') as pip_file:
             package = ''
             version = ''
             package_license = ''
             url = ''
+            description = ''
             package_type = 'pip'
             for line in pip_file:
                 if line.startswith('Name:'):
                     if package:
+                        process = False
+                        status = None
+                        package_name = package.lower()
                         if package.lower() not in oin_packages:
                             # try 'python-{package}' as well
-                            if f'python-{package.lower()}' not in oin_packages:
-                                not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+                            p_name = f'python-{package.lower()}'
+                            if p_name not in oin_packages:
+                                process = True
+                                status = 'new'
+                            else:
+                                if args.new_versions and oin_packages[p_name]['version'] < version:
+                                    package_name = p_name
+                                    process = True
+                                    status = 'update'
+                        else:
+                            if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                                process = True
+                                status = 'update'
+                        if process:
+                            not_found_packages.append({'package': package_name, 'version': version,
+                                                       'license': package_license, 'type': package_type,
+                                                       'url': url, 'description': description, 'status': status})
 
                     # parse the package name, reset everything
                     package = line.split(':', maxsplit=1)[-1].strip()
                     version = ''
                     package_license = ''
+                    description = ''
                     url = ''
                 elif line.startswith('Home-page:'):
                     url = line.split(':', maxsplit=1)[-1].strip()
@@ -212,10 +287,29 @@ def main(argv):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
+                elif line.startswith('Summary:'):
+                    description = line.split(':', maxsplit=1)[-1].strip()
             if package:
+                process = False
+                status = None
+                package_name = package.lower()
                 if package.lower() not in oin_packages:
                     if f'python-{package.lower()}' not in oin_packages:
-                        not_found_packages.append({'package': package, 'version': version, 'license': package_license, 'type': package_type, 'url': url})
+                        process = True
+                        status = 'new'
+                    else:
+                        if args.new_versions and oin_packages[p_name]['version'] < version:
+                            package_name = p_name
+                            process = True
+                            status = 'update'
+                else:
+                    if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                        process = True
+                        status = 'update'
+                if process:
+                    not_found_packages.append({'package': package_name, 'version': version,
+                                               'license': package_license, 'type': package_type,
+                                               'url': url, 'description': description, 'status': status})
 
 
     if args.out_type == 'txt':
@@ -231,6 +325,8 @@ def main(argv):
                         out_file.write('\n')
                         out_file.write(f"URL: {p['url']}")
                         out_file.write('\n')
+                        out_file.write(f"Status: {p['status']}")
+                        out_file.write('\n')
                         out_file.write(f"Package type: {p['type']}\n\n")
             except Exception as e:
                 print(f'{e}, exiting.', file=sys.stderr)
@@ -241,6 +337,7 @@ def main(argv):
                 print(f"Version: {p['version']}")
                 print(f"License: {p['license']}")
                 print(f"URL: {p['url']}")
+                print(f"Status: {p['status']}")
                 print(f"Package type: {p['type']}\n")
     elif args.out_type == 'json':
         if args.out_path:
@@ -253,23 +350,62 @@ def main(argv):
         else:
             print(json.dumps(not_found_packages, indent=4))
     elif args.out_type == 'csv':
+        column_names = ['Name', 'Version', 'License', 'URL', 'Status', 'Type']
         if args.out_path:
             try:
                 with open(args.out_path, 'w', newline='') as csvfile:
                     csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-                    csv_writer.writerow(['Name', 'Version', 'License', 'URL', 'Type'])
+                    csv_writer.writerow(column_names)
                     for p in sorted(not_found_packages, key=lambda x: x['package']):
                         csv_writer.writerow([p['package'], p['version'], p['license'],
-                                             p['url'], p['type']])
+                                             p['url'], p['status'], p['type']])
             except Exception as e:
                 print(f'{e}, exiting.', file=sys.stderr)
                 sys.exit(1)
         else:
             csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_MINIMAL)
-            csv_writer.writerow(['Name', 'Version', 'License', 'URL', 'Type'])
+            csv_writer.writerow(column_names)
             for p in sorted(not_found_packages, key=lambda x: x['package']):
                 csv_writer.writerow([p['package'], p['version'], p['license'],
-                                     p['url'], p['type']])
+                                     p['url'], p['status'], p['type']])
+    elif args.out_type == 'oin_csv':
+        column_names = ['Number', 'Package Name', 'Nominated By...', 'Nomination type',
+                        'Nominator comments', 'Version', 'License', 'Project Download URL',
+                        'Project URL', 'Package Version URL', 'Package Version tag',
+                        'Description', 'Project', 'OSS Platform', 'TechArea', 'Old name']
+        number = nominated_by = techarea = old_name = ''
+
+        nomination_comments = project_download_url = package_version_url = package_version_tag = ''
+        project = oss_platform = tech_area = old_name = ''
+        if args.out_path:
+            try:
+                with open(args.out_path, 'w', newline='') as csvfile:
+                    csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+                    csv_writer.writerow(column_names)
+                    for p in sorted(not_found_packages, key=lambda x: x['package']):
+                        if p['status'] == 'new':
+                            nomination_type = 'NOMINATED'
+                        elif p['status'] == 'update':
+                            nomination_type = 'UPDATE'
+                        csv_writer.writerow([number, p['package'], nominated_by, nomination_type,
+                                             nomination_comments, p['version'], p['license'],
+                                             project_download_url, p['url'], package_version_url,
+                                             package_version_tag, p['description'], project,
+                                             oss_platform, tech_area, old_name])
+            except Exception as e:
+                print(f'{e}, exiting.', file=sys.stderr)
+                sys.exit(1)
+        else:
+            csv_writer = csv.writer(sys.stdout, quoting=csv.QUOTE_MINIMAL)
+            csv_writer.writerow(column_names)
+            for p in sorted(not_found_packages, key=lambda x: x['package']):
+                if p['status'] == 'new':
+                    nomination_type = 'NOMINATED'
+                elif p['status'] == 'update':
+                    nomination_type = 'UPDATE'
+                csv_writer.writerow([number, p['package'], nominated_by, nomination_type, nomination_comments,
+                                     p['version'], p['license'], project_download_url, p['url'], package_version_url,
+                                     package_version_tag, p['description'], project, oss_platform, tech_area, old_name])
 
 if __name__ == "__main__":
     main(sys.argv)
