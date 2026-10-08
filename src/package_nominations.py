@@ -325,6 +325,8 @@ def main(argv):
                         out_file.write('\n')
                         out_file.write(f"URL: {p['url']}")
                         out_file.write('\n')
+                        out_file.write(f"Status: {p['status']}")
+                        out_file.write('\n')
                         out_file.write(f"Package type: {p['type']}\n\n")
             except Exception as e:
                 print(f'{e}, exiting.', file=sys.stderr)
@@ -335,6 +337,7 @@ def main(argv):
                 print(f"Version: {p['version']}")
                 print(f"License: {p['license']}")
                 print(f"URL: {p['url']}")
+                print(f"Status: {p['status']}")
                 print(f"Package type: {p['type']}\n")
     elif args.out_type == 'json':
         if args.out_path:
