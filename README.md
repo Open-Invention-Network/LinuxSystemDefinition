@@ -59,10 +59,31 @@ $ python package_nominations.py -l /tmp/deb -c table-13_2026-02-25.csv -t deb
 ## Python pip
 
 ```
-$ pip list | tail -n +3 | cut -f 1 -d " " | xargs -I% pip show % > /tmp/pip
+$ pip list | tail -n +3 | cut -f 1 -d " " | xargs -I% pip show -v % > /tmp/pip
 
 $ python package_nominations.py -l /tmp/pip -c table-13_2026-02-25.csv -t pip
 ```
+
+## Output
+
+The tool works on **source** packages: the source RPM for RPM listings, the
+`Source` package (and its version) for DEB listings, and the project for pip.
+For each package not found in the Linux System definition it reports:
+
+- Name, Version and License
+- URL: the project homepage recorded by the package
+- Source URL: the source repository, when the package records one. For pip,
+  `pip show -v` lists the `Project-URLs`, which usually include it; without
+  `-v` only the homepage is available.
+- Purl: a [package URL](https://github.com/package-url/purl-spec) identifying
+  the source package, e.g. `pkg:rpm/almalinux/crypto-policies@20260216-1.el10?arch=src&distro=el10`,
+  `pkg:deb/debian/avrdude@7.1%2Bdfsg-3?arch=source` or `pkg:pypi/asyncpg@0.32.0`.
+  The purl lets the nomination tools look the package up in other sources,
+  such as Repology.
+
+The purl's distribution is taken from the listing (the RPM `Vendor`, or Ubuntu
+for DEB listings with `Original-Maintainer` fields, otherwise Debian). Use
+`--distro` to set it, e.g. `--distro mint`.
 
 ## Running the tests
 

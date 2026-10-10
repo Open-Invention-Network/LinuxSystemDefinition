@@ -18,13 +18,13 @@ TABLE_CSV = TEST_DIR / 'table-13_2026-08-18.csv'
 TABLE_HEADER = 'package_version,description,download_url,version_url,name,project_url,purl\n'
 
 
-def run(listing, listing_type, table_csv=TABLE_CSV, output_type='json'):
+def run(listing, listing_type, table_csv=TABLE_CSV, output_type='json', extra_args=()):
     with tempfile.TemporaryDirectory() as tmp:
         listing_path = pathlib.Path(tmp) / 'listing'
         listing_path.write_text(listing, encoding='utf-8')
         result = subprocess.run([sys.executable, str(SCRIPT), '-l', str(listing_path),
                                  '-c', str(table_csv), '-t', listing_type,
-                                 '--output-type', output_type],
+                                 '--output-type', output_type, *extra_args],
                                 capture_output=True, text=True, check=True)
     return result.stdout
 
@@ -34,13 +34,14 @@ def run_json(listing, listing_type, **kwargs):
 
 
 def rpm_record(name, version, release, source_rpm, license='MIT', url='https://example.org/',
-               description='A package.'):
+               description='A package.', vendor='Fedora Project'):
     return (f"Name        : {name}\n"
             f"Version     : {version}\n"
             f"Release     : {release}\n"
             f"Architecture: x86_64\n"
             f"License     : {license}\n"
             f"Source RPM  : {source_rpm}\n"
+            f"Vendor      : {vendor}\n"
             f"URL         : {url}\n"
             f"Summary     : Summary\n"
             f"Description :\n{description}\n")
@@ -108,6 +109,56 @@ class PipTest(unittest.TestCase):
         self.assertNotIn("Typing-Extensions", found)  # typing_extensions in Table 13
         self.assertEqual(list(found), ['Oin_Test.Pkg'])
         self.assertEqual(found['Oin_Test.Pkg']['license'], 'Apache-2.0')
+
+
+class SourcePointerTest(unittest.TestCase):
+
+    def test_rpm_purl_and_source_url(self):
+        listing = rpm_record('oin-epel-pkg', '2.0', '1.el10_1', 'oin-epel-pkg-2.0-1.el10_1.src.rpm',
+                             url='https://github.com/example/oin-epel-pkg')
+        listing += rpm_record('oin-base-pkg', '1.0', '3.el10', 'oin-base-pkg-1.0-3.el10.src.rpm',
+                              vendor='AlmaLinux')
+        found = run_json(listing, 'rpm')
+        self.assertEqual(found['oin-epel-pkg']['purl'], 'pkg:rpm/fedora/oin-epel-pkg@2.0-1.el10_1?arch=src&distro=el10')
+        self.assertEqual(found['oin-epel-pkg']['source_url'], 'https://github.com/example/oin-epel-pkg')
+        self.assertEqual(found['oin-base-pkg']['purl'], 'pkg:rpm/almalinux/oin-base-pkg@1.0-3.el10?arch=src&distro=el10')
+        # a project website is not a source URL
+        self.assertEqual(found['oin-base-pkg']['source_url'], '')
+
+    def test_deb_source_version_and_purl(self):
+        listing = ("Package: oin-arm-binutils\nSource: oin-binutils (23)\nVersion: 2.44-3+23+b2\n"
+                   "Homepage: https://sourceware.org/binutils/\n\n"
+                   "Package: oin-tool\nVersion: 1:7.1+dfsg-3\nHomepage: https://github.com/example/oin-tool/\n")
+        found = run_json(listing, 'deb')
+        self.assertEqual(found['oin-binutils']['version'], '23')
+        self.assertEqual(found['oin-binutils']['purl'], 'pkg:deb/debian/oin-binutils@23?arch=source')
+        self.assertEqual(found['oin-tool']['purl'], 'pkg:deb/debian/oin-tool@1%3A7.1%2Bdfsg-3?arch=source')
+        self.assertEqual(found['oin-tool']['source_url'], 'https://github.com/example/oin-tool/')
+
+    def test_ubuntu_detected_and_distro_override(self):
+        listing = "Package: oin-tool\nVersion: 1.0-1ubuntu1\nOriginal-Maintainer: Someone <a@example.org>\n"
+        self.assertTrue(run_json(listing, 'deb')['oin-tool']['purl'].startswith('pkg:deb/ubuntu/'))
+        found = run_json(listing, 'deb', extra_args=['--distro', 'mint'])
+        self.assertTrue(found['oin-tool']['purl'].startswith('pkg:deb/mint/'))
+
+    def test_pip_verbose_project_urls(self):
+        listing = ("Name: Oin_Test.Pkg\nVersion: 1.0\nHome-page: \nLicense-Expression: MIT\n"
+                   "Project-URLs:\n  Documentation, https://oin-test.readthedocs.io\n"
+                   "  Homepage, https://oin-test.example.org\n  Source, https://codeberg.org/example/oin-test\n"
+                   "\nName: oin-other\nVersion: 2.0\nHome-page: https://github.com/example/oin-other\n")
+        found = run_json(listing, 'pip')
+        self.assertEqual(found['Oin_Test.Pkg']['purl'], 'pkg:pypi/oin-test-pkg@1.0')
+        self.assertEqual(found['Oin_Test.Pkg']['url'], 'https://oin-test.example.org')
+        self.assertEqual(found['Oin_Test.Pkg']['source_url'], 'https://codeberg.org/example/oin-test')
+        self.assertEqual(found['oin-other']['source_url'], 'https://github.com/example/oin-other')
+
+    def test_txt_and_csv_include_source_url_and_purl(self):
+        listing = "Name: oin-other\nVersion: 2.0\nHome-page: https://github.com/example/oin-other\n"
+        txt = run(listing, 'pip', output_type='txt')
+        self.assertIn('Source URL: https://github.com/example/oin-other', txt)
+        self.assertIn('Purl: pkg:pypi/oin-other@2.0', txt)
+        csv_out = run(listing, 'pip', output_type='csv')
+        self.assertTrue(csv_out.startswith('Name,Version,License,URL,Type,Source URL,Purl'))
 
 
 class OptionsTest(unittest.TestCase):
