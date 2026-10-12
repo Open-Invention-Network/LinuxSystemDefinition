@@ -105,7 +105,7 @@ def main(argv):
             package_version, description, download_url, version_url, name, project_url, purl = line
             oin_packages[name.lower()] = {'version': package_version, 'dl_url': download_url,
                                           'version_url': version_url, 'project_url': project_url,
-                                          'package_url': purl}
+                                          'package_url': purl, 'description': description}
 
     not_found_packages = []
 
@@ -151,6 +151,7 @@ def main(argv):
                                                            'url': url, 'description': description, 'status': 'new'})
                             else:
                                 if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                                    description = oin_packages[package.lower()]['description']
                                     not_found_packages.append({'package': package, 'version': version,
                                                                'license': package_license, 'type': package_type,
                                                                'url': url, 'description': description, 'status': 'update'})
@@ -172,6 +173,7 @@ def main(argv):
                                                'url': url, 'description': description, 'status': 'new'})
                 else:
                     if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                        description = oin_packages[package.lower()]['description']
                         not_found_packages.append({'package': package, 'version': version,
                                                    'license': package_license, 'type': package_type,
                                                    'url': url, 'description': description, 'status': 'update'})
@@ -206,6 +208,7 @@ def main(argv):
                                                            'url': url, 'description': description, 'status': 'new'})
                             else:
                                 if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
+                                    description = oin_packages[package.lower()]['description']
                                     not_found_packages.append({'package': package, 'version': version,
                                                                'license': package_license, 'type': package_type,
                                                                'url': url, 'description': description, 'status': 'update'})
@@ -237,6 +240,7 @@ def main(argv):
                                                'url': url, 'description': description, 'status': 'new'})
                 else:
                     if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
+                        description = oin_packages[package.lower()]['description']
                         not_found_packages.append({'package': package, 'version': version,
                                                    'license': package_license, 'type': package_type,
                                                    'url': url, 'description': description, 'status': 'update'})
@@ -263,11 +267,13 @@ def main(argv):
                                 status = 'new'
                             else:
                                 if args.new_versions and oin_packages[p_name]['version'] < version:
+                                    description = oin_packages[p_name]['description']
                                     package_name = p_name
                                     process = True
                                     status = 'update'
                         else:
-                            if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                            if args.new_versions and oin_packages[package_name]['version'] < version:
+                                description = oin_packages[package_name]['description']
                                 process = True
                                 status = 'update'
                         if process:
@@ -294,16 +300,18 @@ def main(argv):
                 status = None
                 package_name = package.lower()
                 if package.lower() not in oin_packages:
-                    if f'python-{package.lower()}' not in oin_packages:
+                    p_name = f'python-{package.lower()}'
+                    if p_name not in oin_packages:
                         process = True
                         status = 'new'
                     else:
                         if args.new_versions and oin_packages[p_name]['version'] < version:
+                            description = oin_packages[p_name]['description']
                             package_name = p_name
                             process = True
                             status = 'update'
                 else:
-                    if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                    if args.new_versions and oin_packages[package_name]['version'] < version:
                         process = True
                         status = 'update'
                 if process:
