@@ -159,7 +159,7 @@ def main(argv):
                     package = ''
                     version = ''
                     release = ''
-                    package__license = ''
+                    package_license = ''
                     url = ''
                     summary = ''
                     description = ''
