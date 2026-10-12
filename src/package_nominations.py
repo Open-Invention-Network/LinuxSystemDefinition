@@ -187,6 +187,7 @@ def main(argv):
         with open(listing, 'r', encoding='utf-8') as deb_file:
             package = ''
             version = ''
+            deb_version = ''
             url = ''
             description = ''
             package_license = ''
@@ -218,6 +219,7 @@ def main(argv):
                     # for a new packages.
                     package = line.split(':', maxsplit=1)[-1].strip()
                     version = ''
+                    deb_version = ''
                     url = ''
                     description = ''
                     in_description = False
