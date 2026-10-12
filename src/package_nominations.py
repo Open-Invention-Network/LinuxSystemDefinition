@@ -105,7 +105,7 @@ def main(argv):
             package_version, description, download_url, version_url, name, project_url, purl = line
             oin_packages[name.lower()] = {'version': package_version, 'dl_url': download_url,
                                           'version_url': version_url, 'project_url': project_url,
-                                          'package_url': purl, 'description': description}
+                                          'package_url': purl, 'description': description, 'name': name}
 
     not_found_packages = []
 
