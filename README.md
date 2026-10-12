@@ -6,6 +6,49 @@ The purpose of this script is to help companies quickly and easily compile a lis
 
 It has been kept as simple as possible regarding dependencies so it can run on a wide range of systems. It does not have to run on the same machine as the package managers, so it can be used for testing various systems from one workstation.
 
+# Summary and latest changes
+
+The latest version of the tool is 2.0.
+
+It contains the following features:
+
+* processes output of three package managers:
+  1. rpm - used on Fedora, RHEL, SUSE and other RPM-based Linux systems
+  2. deb - used on Debian, Ubuntu and other DEB-based Linux systems
+  3. pip - used for installing Python packages
+
+* output of data in four formats:
+  1. text - key/value pair output
+  2. CSV - Comma Separated Value data for use in spreadsheet programs
+  3. JSON - structured data in JSON format
+  4. OIN CSV - format used by OIN to accept nominations for the Linux System Definition
+
+* output includes:
+  1. packages that are not included in the Linux System Definition
+  2. updates to packages that are in the Linux System Definition (optional functionality, needs the `--new-versions` flag to be enabled when running)
+
+# How to run
+
+The script doesn't need any external dependencies, except a recent Python interpreter. The code can be checked out using `git clone`:
+
+```
+$ git clone https://github.com/Open-Invention-Network/LinuxSystemDefinition
+```
+
+or downloaded straight from the GitHub website. By default the `git clone` command will give you the latest development version. To switch to a specific version use the `git tag` command to find the desired version:
+
+```
+$ git tag -l
+1.0
+2.0
+```
+
+and then switch to the desired tag:
+
+```
+$ git checkout 2.0
+```
+
 ## Getting the latest Linux System definition
 
 The CSV files referenced below (e.g. `table-13_2026-02-25.csv`) are examples for local testing only. The current, authoritative Linux System definition should always be downloaded from [the export tool](https://definition.openinventionnetwork.com/export/):
