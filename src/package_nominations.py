@@ -68,7 +68,7 @@ def main(argv):
         parser.error("Unsupported file listing type")
 
     if args.out_type.lower() not in ['txt', 'json', 'csv', 'oin_csv']:
-        parser.error("Unsupported file listing type")
+        parser.error("Unsupported output type")
 
     if args.out_path:
         out = pathlib.Path(args.out_path)
