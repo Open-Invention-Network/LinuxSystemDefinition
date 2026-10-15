@@ -238,6 +238,10 @@ def main(argv):
                     url = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
+                    if ':' in version:
+                        # remove the Debian epoch if present
+                        # https://www.debian.org/doc/debian-policy/ch-controlfields.html#version
+                        version = version.split(':', maxsplit=1)[-1]
                     deb_version = re.split(r'[+-]', version)[0]
                 elif line.startswith('Source:'):
                     package = line.split(':', maxsplit=1)[-1].strip()
