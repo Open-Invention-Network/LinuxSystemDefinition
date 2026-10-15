@@ -132,9 +132,11 @@ def main(argv):
                 elif line.startswith('Release'):
                     release = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Source RPM'):
-                    avr = f'-{version}-{release}'
-                    package = line.split(':', maxsplit=1)[-1].strip()[:-8 - len(avr)]
-                    package = ALIASES.get(package, '')
+                    srpm = line.split(':', maxsplit=1)[-1].strip()
+                    if srpm != '(none)' and srpm.endswith('.rpm'):
+                        srpm_base = srpm.removesuffix('.src.rpm').removesuffix('.nosrc.rpm')
+                        package = srpm_base.rsplit('-', 2)[0]
+                    package = ALIASES.get(package, package)
                 elif line.startswith('License'):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('URL'):
