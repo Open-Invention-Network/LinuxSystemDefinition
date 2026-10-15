@@ -134,7 +134,7 @@ def main(argv):
                 elif line.startswith('Source RPM'):
                     avr = f'-{version}-{release}'
                     package = line.split(':', maxsplit=1)[-1].strip()[:-8 - len(avr)]
-                    package = ALIASES.get(package, '')
+                    package = ALIASES.get(package, package)
                 elif line.startswith('License'):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('URL'):
@@ -207,7 +207,7 @@ def main(argv):
                         # sometimes some package names include a version
                         # number in brackets that should be cleaned up first
                         package = package.split('(', maxsplit=1)[0].strip()
-                    package = ALIASES.get(package, '')
+                    package = ALIASES.get(package, package)
                     if package:
                         if package not in deb_packages_seen:
                             if package.lower() not in oin_packages:
