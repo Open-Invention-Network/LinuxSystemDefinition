@@ -63,11 +63,12 @@ def main(argv):
 
     if not args.out_type:
         args.out_type = 'txt'
+    args.out_type = args.out_type.lower()
 
     if args.listing_type.lower() not in ['rpm', 'deb', 'pip']:
         parser.error("Unsupported file listing type")
 
-    if args.out_type.lower() not in ['txt', 'json', 'csv', 'oin_csv']:
+    if args.out_type not in ['txt', 'json', 'csv', 'oin_csv']:
         parser.error("Unsupported output type")
 
     if args.out_path:
@@ -136,6 +137,8 @@ def main(argv):
                     package = line.split(':', maxsplit=1)[-1].strip()[:-8 - len(avr)]
                     package = ALIASES.get(package, '')
                 elif re.match(r'^License\s*:', line):
+                    package = ALIASES.get(package, package)
+                elif line.startswith('License'):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif re.match(r'^URL\s*:', line):
                     url = line.split(':', maxsplit=1)[-1].strip()
@@ -207,7 +210,7 @@ def main(argv):
                         # sometimes some package names include a version
                         # number in brackets that should be cleaned up first
                         package = package.split('(', maxsplit=1)[0].strip()
-                    package = ALIASES.get(package, '')
+                    package = ALIASES.get(package, package)
                     if package:
                         if package not in deb_packages_seen:
                             if package.lower() not in oin_packages:
@@ -311,7 +314,7 @@ def main(argv):
                     url = ''
                 elif line.startswith('Home-page:'):
                     url = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('License'):
+                elif line.startswith('License:'):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
