@@ -8,7 +8,7 @@ It has been kept as simple as possible regarding dependencies so it can run on 
 
 # Summary and latest changes
 
-The latest version of the tool is 2.0.
+The latest version of the tool is 2.0.1
 
 It contains the following features:
 
