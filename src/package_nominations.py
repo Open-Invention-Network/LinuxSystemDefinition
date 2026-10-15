@@ -175,7 +175,7 @@ def main(argv):
                     description += line
 
             # store the data for the final package
-            if package not in rpm_packages_seen:
+            if package and package not in rpm_packages_seen:
                 if package.lower() not in oin_packages:
                     not_found_packages.append({'package': package, 'version': version,
                                                'license': package_license, 'type': package_type,
