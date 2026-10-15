@@ -105,7 +105,8 @@ def main(argv):
             package_version, description, download_url, version_url, name, project_url, purl = line
             oin_packages[name.lower()] = {'version': package_version, 'dl_url': download_url,
                                           'version_url': version_url, 'project_url': project_url,
-                                          'package_url': purl, 'description': description, 'name': name}
+                                          'package_url': purl, 'description': description,
+                                          'name': name}
 
     not_found_packages = []
 
@@ -146,14 +147,18 @@ def main(argv):
                         if package not in rpm_packages_seen:
                             if package.lower() not in oin_packages:
                                 not_found_packages.append({'package': package, 'version': version,
-                                                           'license': package_license, 'type': package_type,
-                                                           'url': url, 'description': description, 'status': 'new'})
+                                                           'license': package_license,
+                                                           'type': package_type, 'url': url,
+                                                           'description': description,
+                                                           'status': 'new'})
                             else:
                                 if args.new_versions and oin_packages[package.lower()]['version'] < version:
                                     description = oin_packages[package.lower()]['description']
                                     not_found_packages.append({'package': package, 'version': version,
-                                                               'license': package_license, 'type': package_type,
-                                                               'url': url, 'description': description, 'status': 'update'})
+                                                               'license': package_license,
+                                                               'type': package_type, 'url': url,
+                                                               'description': description,
+                                                               'status': 'update'})
                         rpm_packages_seen.add(package)
                     package = ''
                     version = ''
@@ -165,17 +170,21 @@ def main(argv):
                     in_description = False
                 elif in_description:
                     description += line
+
+            # store the data for the final package
             if package not in rpm_packages_seen:
                 if package.lower() not in oin_packages:
                     not_found_packages.append({'package': package, 'version': version,
                                                'license': package_license, 'type': package_type,
-                                               'url': url, 'description': description, 'status': 'new'})
+                                               'url': url, 'description': description,
+                                               'status': 'new'})
                 else:
                     if args.new_versions and oin_packages[package.lower()]['version'] < version:
                         description = oin_packages[package.lower()]['description']
                         not_found_packages.append({'package': package, 'version': version,
                                                    'license': package_license, 'type': package_type,
-                                                   'url': url, 'description': description, 'status': 'update'})
+                                                   'url': url, 'description': description,
+                                                   'status': 'update'})
 
     elif args.listing_type.lower() == 'deb':
         # walk the Deb listing. Use the "Package" attribute to determine
@@ -203,14 +212,18 @@ def main(argv):
                         if package not in deb_packages_seen:
                             if package.lower() not in oin_packages:
                                 not_found_packages.append({'package': package, 'version': version,
-                                                           'license': package_license, 'type': package_type,
-                                                           'url': url, 'description': description, 'status': 'new'})
+                                                           'license': package_license,
+                                                           'type': package_type, 'url': url,
+                                                           'description': description,
+                                                           'status': 'new'})
                             else:
                                 if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
                                     description = oin_packages[package.lower()]['description']
                                     not_found_packages.append({'package': package, 'version': version,
-                                                               'license': package_license, 'type': package_type,
-                                                               'url': url, 'description': description, 'status': 'update'})
+                                                               'license': package_license,
+                                                               'type': package_type, 'url': url,
+                                                               'description': description,
+                                                               'status': 'update'})
                         deb_packages_seen.add(package)
 
                     # parse the package name, reset all other fields
@@ -233,17 +246,21 @@ def main(argv):
                     in_description = True
                 elif in_description:
                     description += line
+
+            # store the data for the final package
             if package and package not in deb_packages_seen:
                 if package.lower() not in oin_packages:
                     not_found_packages.append({'package': package, 'version': version,
                                                'license': package_license, 'type': package_type,
-                                               'url': url, 'description': description, 'status': 'new'})
+                                               'url': url, 'description': description,
+                                               'status': 'new'})
                 else:
                     if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
                         description = oin_packages[package.lower()]['description']
                         not_found_packages.append({'package': package, 'version': version,
                                                    'license': package_license, 'type': package_type,
-                                                   'url': url, 'description': description, 'status': 'update'})
+                                                   'url': url, 'description': description,
+                                                   'status': 'update'})
 
     elif args.listing_type.lower() == 'pip':
         with open(listing, 'r', encoding='utf-8') as pip_file:
@@ -279,7 +296,8 @@ def main(argv):
                         if process:
                             not_found_packages.append({'package': package_name, 'version': version,
                                                        'license': package_license, 'type': package_type,
-                                                       'url': url, 'description': description, 'status': status})
+                                                       'url': url, 'description': description,
+                                                       'status': status})
 
                     # parse the package name, reset everything
                     package = line.split(':', maxsplit=1)[-1].strip()
@@ -295,6 +313,8 @@ def main(argv):
                     version = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Summary:'):
                     description = line.split(':', maxsplit=1)[-1].strip()
+
+            # store the data for the final package
             if package:
                 process = False
                 status = None
@@ -317,7 +337,8 @@ def main(argv):
                 if process:
                     not_found_packages.append({'package': package_name, 'version': version,
                                                'license': package_license, 'type': package_type,
-                                               'url': url, 'description': description, 'status': status})
+                                               'url': url, 'description': description,
+                                               'status': status})
 
 
     if args.out_type == 'txt':
@@ -411,9 +432,11 @@ def main(argv):
                     nomination_type = 'NOMINATED'
                 elif p['status'] == 'update':
                     nomination_type = 'UPDATE'
-                csv_writer.writerow([number, p['package'], nominated_by, nomination_type, nomination_comments,
-                                     p['version'], p['license'], project_download_url, p['url'], package_version_url,
-                                     package_version_tag, p['description'], project, oss_platform, tech_area, old_name])
+                csv_writer.writerow([number, p['package'], nominated_by, nomination_type,
+                                     nomination_comments, p['version'], p['license'],
+                                     project_download_url, p['url'], package_version_url,
+                                     package_version_tag, p['description'], project, oss_platform,
+                                     tech_area, old_name])
 
 if __name__ == "__main__":
     main(sys.argv)
