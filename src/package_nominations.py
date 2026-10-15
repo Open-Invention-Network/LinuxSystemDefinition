@@ -402,13 +402,15 @@ def main(argv):
                         'Nominator comments', 'Version', 'License', 'Project Download URL',
                         'Project URL', 'Package Version URL', 'Package Version tag',
                         'Description', 'Project', 'OSS Platform', 'TechArea', 'Old name']
-        number = nominated_by = techarea = old_name = ''
 
-        nomination_comments = project_download_url = package_version_url = package_version_tag = ''
+        # default values for columns. These will most likely not be used
+        number = nominated_by = nomination_comments = project_download_url = ''
+        package_version_url = package_version_tag = ''
         project = oss_platform = tech_area = old_name = ''
+
         if args.out_path:
             try:
-                with open(args.out_path, 'w', newline='') as csvfile:
+                with open(args.out_path, 'w', encoding='utf-8', newline='') as csvfile:
                     csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
                     csv_writer.writerow(column_names)
                     for p in sorted(not_found_packages, key=lambda x: x['package']):
@@ -435,8 +437,8 @@ def main(argv):
                 csv_writer.writerow([number, p['package'], nominated_by, nomination_type,
                                      nomination_comments, p['version'], p['license'],
                                      project_download_url, p['url'], package_version_url,
-                                     package_version_tag, p['description'], project, oss_platform,
-                                     tech_area, old_name])
+                                     package_version_tag, p['description'], project,
+                                     oss_platform, tech_area, old_name])
 
 if __name__ == "__main__":
     main(sys.argv)
