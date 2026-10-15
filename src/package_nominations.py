@@ -128,22 +128,24 @@ def main(argv):
             package_type = 'rpm'
             in_description = False
             for line in rpm_file:
-                if line.startswith('Version'):
+                if re.match(r'^Version\s*:', line):
                     version = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('Release'):
+                elif re.match(r'^Release\s*:', line):
                     release = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('Source RPM'):
+                elif re.match(r'^Source RPM\s*:', line):
                     avr = f'-{version}-{release}'
                     package = line.split(':', maxsplit=1)[-1].strip()[:-8 - len(avr)]
+                    package = ALIASES.get(package, '')
+                elif re.match(r'^License\s*:', line):
                     package = ALIASES.get(package, package)
                 elif line.startswith('License'):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('URL'):
+                elif re.match(r'^URL\s*:', line):
                     url = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('Description'):
+                elif re.match(r'^Description\s*:', line):
                     description = line.split(':', maxsplit=1)[-1].strip()
                     in_description = True
-                elif line.startswith('Name'):
+                elif re.match(r'^Name\s*:', line):
                     if package:
                         if package not in rpm_packages_seen:
                             if package.lower() not in oin_packages:
