@@ -312,7 +312,7 @@ def main(argv):
                     url = ''
                 elif line.startswith('Home-page:'):
                     url = line.split(':', maxsplit=1)[-1].strip()
-                elif line.startswith('License'):
+                elif line.startswith('License:'):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
