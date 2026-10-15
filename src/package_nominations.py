@@ -389,7 +389,7 @@ def main(argv):
         column_names = ['Name', 'Version', 'License', 'URL', 'Status', 'Type']
         if args.out_path:
             try:
-                with open(args.out_path, 'w', newline='') as csvfile:
+                with open(args.out_path, 'w', encoding='utf-8', newline='') as csvfile:
                     csv_writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
                     csv_writer.writerow(column_names)
                     for p in sorted(not_found_packages, key=lambda x: x['package']):
