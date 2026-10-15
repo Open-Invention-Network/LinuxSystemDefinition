@@ -229,8 +229,7 @@ def main(argv):
                                                                'status': 'update'})
                         deb_packages_seen.add(package)
 
-                    # parse the package name, reset all other fields
-                    # for a new packages.
+                    # parse the package name, reset all other fields for a new package.
                     package = line.split(':', maxsplit=1)[-1].strip()
                     version = ''
                     deb_version = ''
