@@ -63,11 +63,12 @@ def main(argv):
 
     if not args.out_type:
         args.out_type = 'txt'
+    args.out_type = args.out_type.lower()
 
     if args.listing_type.lower() not in ['rpm', 'deb', 'pip']:
         parser.error("Unsupported file listing type")
 
-    if args.out_type.lower() not in ['txt', 'json', 'csv', 'oin_csv']:
+    if args.out_type not in ['txt', 'json', 'csv', 'oin_csv']:
         parser.error("Unsupported output type")
 
     if args.out_path:
