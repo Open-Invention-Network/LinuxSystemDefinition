@@ -338,6 +338,7 @@ def main(argv):
                             status = 'update'
                 else:
                     if args.new_versions and oin_packages[package_name]['version'] < version:
+                        description = oin_packages[p_name]['description']
                         process = True
                         status = 'update'
                 if process:
