@@ -133,9 +133,13 @@ def main(argv):
                 elif re.match(r'^Release\s*:', line):
                     release = line.split(':', maxsplit=1)[-1].strip()
                 elif re.match(r'^Source RPM\s*:', line):
-                    avr = f'-{version}-{release}'
-                    package = line.split(':', maxsplit=1)[-1].strip()[:-8 - len(avr)]
-                    package = ALIASES.get(package, package)
+                    srpm_name = line.split(':', maxsplit=1)[-1].strip()
+                    if srpm_name != '(none)':
+                        srpm_base = srpm_name.removesuffix('.src.rpm').removesuffix('.nosrc.rpm')
+                        package = srpm_base.rsplit('-', 2)[0]
+                        package = ALIASES.get(package, package)
+                    else:
+                        package = ALIASES.get(package, package)
                 elif re.match(r'^License\s*:', line):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif re.match(r'^URL\s*:', line):
@@ -161,7 +165,10 @@ def main(argv):
                                                                'description': description,
                                                                'status': 'update'})
                         rpm_packages_seen.add(package)
-                    package = ''
+
+                    # as a placeholder record as some packages do not have
+                    # a source RPM associated with them.
+                    package = line.split(':', maxsplit=1)[1].strip()
                     version = ''
                     release = ''
                     package_license = ''
