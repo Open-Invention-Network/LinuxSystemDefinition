@@ -135,10 +135,8 @@ def main(argv):
                 elif re.match(r'^Source RPM\s*:', line):
                     avr = f'-{version}-{release}'
                     package = line.split(':', maxsplit=1)[-1].strip()[:-8 - len(avr)]
-                    package = ALIASES.get(package, '')
-                elif re.match(r'^License\s*:', line):
                     package = ALIASES.get(package, package)
-                elif line.startswith('License'):
+                elif re.match(r'^License\s*:', line):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
                 elif re.match(r'^URL\s*:', line):
                     url = line.split(':', maxsplit=1)[-1].strip()
