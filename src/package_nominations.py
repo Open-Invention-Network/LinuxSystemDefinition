@@ -27,6 +27,12 @@ ALIASES = {'bind9': 'bind',
           }
 
 
+def normalize_pip_name(name):
+    '''Normalize a Python package name as in PEP 503, for example
+    "Typing_Extensions" and "typing-extensions" are the same package'''
+    return re.sub(r'[-_.]+', '-', name).lower()
+
+
 def main(argv):
     parser = argparse.ArgumentParser()
 
@@ -97,16 +103,22 @@ def main(argv):
     # read the CSV
     oin_packages = {}
     with open(table_csv, encoding='utf-8') as csv_file:
-        csv_reader = csv.reader(csv_file)
-        is_first = True
+        # use the header row rather than the column order, which can differ
+        # between exports, and ignore any extra columns
+        csv_reader = csv.DictReader(csv_file)
+        if not csv_reader.fieldnames or 'name' not in csv_reader.fieldnames:
+            print(f"CSV '{table_csv}' has no 'name' column", file=sys.stderr)
+            sys.exit(1)
         for line in csv_reader:
-            if is_first:
-                is_first = False
+            name = line['name'] or ''
+            if not name:
                 continue
-            package_version, description, download_url, version_url, name, project_url, purl = line
-            oin_packages[name.lower()] = {'version': package_version, 'dl_url': download_url,
-                                          'version_url': version_url, 'project_url': project_url,
-                                          'package_url': purl, 'description': description,
+            oin_packages[name.lower()] = {'version': line.get('package_version') or '',
+                                          'dl_url': line.get('download_url') or '',
+                                          'version_url': line.get('version_url') or '',
+                                          'project_url': line.get('project_url') or '',
+                                          'package_url': line.get('purl') or '',
+                                          'description': line.get('description') or '',
                                           'name': name}
 
     not_found_packages = []
@@ -258,7 +270,11 @@ def main(argv):
                 elif in_description:
                     description += line
 
-            # store the data for the final package
+            # store the data for the final package, cleaned up in
+            # the same way as the other packages
+            if '(' in package:
+                package = package.split('(', maxsplit=1)[0].strip()
+            package = ALIASES.get(package, package)
             if package and package not in deb_packages_seen:
                 if package.lower() not in oin_packages:
                     not_found_packages.append({'package': package, 'version': version,
@@ -274,52 +290,71 @@ def main(argv):
                                                    'status': 'update'})
 
     elif args.listing_type.lower() == 'pip':
+        # Python package names in the table are matched after PEP 503
+        # normalization, so "typing_extensions" matches "typing-extensions"
+        oin_pip_packages = {}
+        for name in oin_packages:
+            oin_pip_packages.setdefault(normalize_pip_name(name), name)
+
+        pip_packages_seen = set()
+
+        def add_pip_package(package, version, package_license, url, description):
+            '''Record a package that is not in the table (or newer than in it)'''
+            pip_name = normalize_pip_name(package)
+            if pip_name in pip_packages_seen:
+                return
+            pip_packages_seen.add(pip_name)
+
+            # the name, then 'python-{package}', as given; only then
+            # the same after normalization
+            table_name = None
+            for candidate in [package.lower(), f'python-{package.lower()}']:
+                if candidate in oin_packages:
+                    table_name = candidate
+                    break
+            if not table_name:
+                table_name = (oin_pip_packages.get(pip_name)
+                              or oin_pip_packages.get(f'python-{pip_name}'))
+            if not table_name:
+                not_found_packages.append({'package': package.lower(), 'version': version,
+                                           'license': package_license, 'type': 'pip',
+                                           'url': url, 'description': description,
+                                           'status': 'new'})
+            elif args.new_versions and oin_packages[table_name]['version'] < version:
+                not_found_packages.append({'package': table_name, 'version': version,
+                                           'license': package_license, 'type': 'pip',
+                                           'url': url,
+                                           'description': oin_packages[table_name]['description'],
+                                           'status': 'update'})
+
         with open(listing, 'r', encoding='utf-8') as pip_file:
             package = ''
             version = ''
             package_license = ''
+            license_expression = ''
             url = ''
             description = ''
-            package_type = 'pip'
             for line in pip_file:
                 if line.startswith('Name:'):
                     if package:
-                        process = False
-                        status = None
-                        package_name = package.lower()
-                        if package.lower() not in oin_packages:
-                            # try 'python-{package}' as well
-                            p_name = f'python-{package.lower()}'
-                            if p_name not in oin_packages:
-                                process = True
-                                status = 'new'
-                            else:
-                                if args.new_versions and oin_packages[p_name]['version'] < version:
-                                    description = oin_packages[p_name]['description']
-                                    package_name = p_name
-                                    process = True
-                                    status = 'update'
-                        else:
-                            if args.new_versions and oin_packages[package_name]['version'] < version:
-                                description = oin_packages[package_name]['description']
-                                process = True
-                                status = 'update'
-                        if process:
-                            not_found_packages.append({'package': package_name, 'version': version,
-                                                       'license': package_license, 'type': package_type,
-                                                       'url': url, 'description': description,
-                                                       'status': status})
+                        # License-Expression (PEP 639) is an SPDX expression,
+                        # so it is preferred over the free-form License
+                        add_pip_package(package, version, license_expression or package_license,
+                                        url, description)
 
                     # parse the package name, reset everything
                     package = line.split(':', maxsplit=1)[-1].strip()
                     version = ''
                     package_license = ''
+                    license_expression = ''
                     description = ''
                     url = ''
                 elif line.startswith('Home-page:'):
                     url = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('License:'):
                     package_license = line.split(':', maxsplit=1)[-1].strip()
+                elif line.startswith('License-Expression:'):
+                    license_expression = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Version:'):
                     version = line.split(':', maxsplit=1)[-1].strip()
                 elif line.startswith('Summary:'):
@@ -327,30 +362,8 @@ def main(argv):
 
             # store the data for the final package
             if package:
-                process = False
-                status = None
-                package_name = package.lower()
-                if package.lower() not in oin_packages:
-                    p_name = f'python-{package.lower()}'
-                    if p_name not in oin_packages:
-                        process = True
-                        status = 'new'
-                    else:
-                        if args.new_versions and oin_packages[p_name]['version'] < version:
-                            description = oin_packages[p_name]['description']
-                            package_name = p_name
-                            process = True
-                            status = 'update'
-                else:
-                    if args.new_versions and oin_packages[package_name]['version'] < version:
-                        description = oin_packages[p_name]['description']
-                        process = True
-                        status = 'update'
-                if process:
-                    not_found_packages.append({'package': package_name, 'version': version,
-                                               'license': package_license, 'type': package_type,
-                                               'url': url, 'description': description,
-                                               'status': status})
+                add_pip_package(package, version, license_expression or package_license,
+                                url, description)
 
 
     if args.out_type == 'txt':

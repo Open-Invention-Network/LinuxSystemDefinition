@@ -45,3 +45,12 @@ Notes:
   Do not hard-code it — always resolve it dynamically via
   `/api/tables/recent` as shown above, since the "current" table changes as
   new tables are published.
+
+## Unit tests
+
+`test_package_nominations.py` runs `src/package_nominations.py` on small
+listings and tables it writes itself (it does not use the example CSV):
+
+```bash
+python -m unittest discover -s test
+```
