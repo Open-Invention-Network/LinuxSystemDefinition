@@ -73,7 +73,7 @@ $ rpm -qia > /tmp/rpm
 Then copy the file to the system running the script and run:
 
 ```
-$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv
 ```
 
 It might be needed to adapt paths to point to the right locations.
@@ -81,26 +81,26 @@ It might be needed to adapt paths to point to the right locations.
 To print to a file add the `-o` parameter, for example:
 
 ```
-$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.txt
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.txt
 ```
 
 By default the program will output in text format, but JSON and CSV are also supported, both as file output, as well as printed on the terminal:
 
 ```
-$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.json --output-type=json
-$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.csv --output-type=csv
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.json --output-type=json
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.csv --output-type=csv
 ```
 
 To also include package updates use the `--new-versions` flag:
 
 ```
-$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.csv --output-type=csv --new-versions
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.csv --output-type=csv --new-versions
 ```
 
 To create a CSV that can be directly sent to OIN with nominations use the `oin_csv` format:
 
 ```
-$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o /tmp/tool_output.csv --output-type=oin_csv --new-versions
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.csv --output-type=oin_csv --new-versions
 ```
 
 ## DEB
@@ -108,7 +108,7 @@ $ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -t rpm -o
 ```
 $ apt list --installed  | cut -f 1 -d / | xargs -I% apt show % > /tmp/deb
 
-$ python package_nominations.py -l /tmp/deb -c table-13_2026-02-25.csv -t deb
+$ python package_nominations.py -l /tmp/deb -c table-13_2026-02-25.csv
 ```
 
 ## Python pip
@@ -116,7 +116,7 @@ $ python package_nominations.py -l /tmp/deb -c table-13_2026-02-25.csv -t deb
 ```
 $ pip list | tail -n +3 | cut -f 1 -d " " | xargs -I% pip show % > /tmp/pip
 
-$ python package_nominations.py -l /tmp/pip -c table-13_2026-02-25.csv -t pip
+$ python package_nominations.py -l /tmp/pip -c table-13_2026-02-25.csv
 ```
 
 ## Shortcomings

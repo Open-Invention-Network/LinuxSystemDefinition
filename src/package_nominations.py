@@ -41,9 +41,6 @@ def main(argv):
     parser.add_argument("--new-versions", action="store_true", dest="new_versions",
                         help="Report packages with newer versions")
 
-    parser.add_argument("-t", "--type", action="store", dest="listing_type",
-                        help="File listing type (RPM, DEB, PIP), case insensitive")
-
     parser.add_argument("-o", "--out", action="store", dest="out_path",
                         help="Output file (or stdout)")
 
@@ -58,15 +55,9 @@ def main(argv):
     if not args.table_csv:
         parser.error("Linux System Definition CSV missing")
 
-    if not args.listing_type:
-        parser.error("File listing type not provided")
-
     if not args.out_type:
         args.out_type = 'txt'
     args.out_type = args.out_type.lower()
-
-    if args.listing_type.lower() not in ['rpm', 'deb', 'pip']:
-        parser.error("Unsupported file listing type")
 
     if args.out_type not in ['txt', 'json', 'csv', 'oin_csv']:
         parser.error("Unsupported output type")
@@ -110,8 +101,30 @@ def main(argv):
                                           'name': name}
 
     not_found_packages = []
+    listing_type = ''
 
-    if args.listing_type.lower() == 'rpm':
+    # first try to determine the format. It is assumed that the entire
+    # file with package manager information is coming from a single package
+    # manager (i.e. output of different package managers has not been mixed).
+    with open(listing, 'r', encoding='utf-8') as package_manager_file:
+        for line in package_manager_file:
+            if ':' in line:
+                key = line.split(':', maxsplit=1)[0].strip()
+                if key in ['APT-Sources', 'APT-Manual-Installed']:
+                    listing_type = 'deb'
+                    break
+                if key in ['Source RPM']:
+                    listing_type = 'rpm'
+                    break
+                if key in ['Author-email', 'Home-page']:
+                    listing_type = 'pip'
+                    break
+
+    if not listing_type:
+        print("Package manager type could not be determined", file=sys.stderr)
+        sys.exit(1)
+
+    if listing_type == 'rpm':
         # walk the RPM listing. Use the "Source RPM" attribute to filter
         # duplicates and to determine the package name. The "URL" attribute
         # is stored to assist with the comparison.
@@ -194,7 +207,7 @@ def main(argv):
                                                    'url': url, 'description': description,
                                                    'status': 'update'})
 
-    elif args.listing_type.lower() == 'deb':
+    elif listing_type == 'deb':
         # walk the Deb listing. Use the "Package" attribute to determine
         # the package name. In case there is a "Source" attribute use that
         # instead.
@@ -273,7 +286,7 @@ def main(argv):
                                                    'url': url, 'description': description,
                                                    'status': 'update'})
 
-    elif args.listing_type.lower() == 'pip':
+    elif listing_type == 'pip':
         with open(listing, 'r', encoding='utf-8') as pip_file:
             package = ''
             version = ''
