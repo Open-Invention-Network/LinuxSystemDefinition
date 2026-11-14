@@ -47,6 +47,9 @@ def main(argv):
     parser.add_argument("--output-type", action="store", dest="out_type",
                         help="Output type (TXT, JSON, CSV, OIN_CSV), case insensitive, default: TXT")
 
+    parser.add_argument("--summary", action="store_true", dest="summary",
+                        help="Create a summary (only use with --out)")
+
     args = parser.parse_args()
 
     if not args.listing:
@@ -66,6 +69,9 @@ def main(argv):
         out = pathlib.Path(args.out_path)
         if out.exists():
             parser.error(f"Path '{out}' already exists")
+
+    if args.summary and not args.out_path:
+        parser.error("--summary can only be used together with --out")
 
     # checks for the listing file
     listing = pathlib.Path(args.listing)
@@ -102,6 +108,9 @@ def main(argv):
 
     not_found_packages = []
     listing_type = ''
+
+    updates = 0
+    new_packages = 0
 
     # first try to determine the format. It is assumed that the entire
     # file with package manager information is coming from a single package
@@ -169,6 +178,7 @@ def main(argv):
                                                            'type': package_type, 'url': url,
                                                            'description': description,
                                                            'status': 'new'})
+                                new_packages += 1
                             else:
                                 if args.new_versions and oin_packages[package.lower()]['version'] < version:
                                     description = oin_packages[package.lower()]['description']
@@ -177,6 +187,7 @@ def main(argv):
                                                                'type': package_type, 'url': url,
                                                                'description': description,
                                                                'status': 'update'})
+                                updates += 1
                         rpm_packages_seen.add(package)
 
                     # as a placeholder record as some packages do not have
@@ -199,6 +210,7 @@ def main(argv):
                                                'license': package_license, 'type': package_type,
                                                'url': url, 'description': description,
                                                'status': 'new'})
+                    new_packages += 1
                 else:
                     if args.new_versions and oin_packages[package.lower()]['version'] < version:
                         description = oin_packages[package.lower()]['description']
@@ -206,6 +218,7 @@ def main(argv):
                                                    'license': package_license, 'type': package_type,
                                                    'url': url, 'description': description,
                                                    'status': 'update'})
+                    updates += 1
 
     elif listing_type == 'deb':
         # walk the Deb listing. Use the "Package" attribute to determine
@@ -237,6 +250,7 @@ def main(argv):
                                                            'type': package_type, 'url': url,
                                                            'description': description,
                                                            'status': 'new'})
+                                new_packages += 1
                             else:
                                 if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
                                     description = oin_packages[package.lower()]['description']
@@ -245,6 +259,7 @@ def main(argv):
                                                                'type': package_type, 'url': url,
                                                                'description': description,
                                                                'status': 'update'})
+                                updates += 1
                         deb_packages_seen.add(package)
 
                     # parse the package name, reset all other fields for a new package.
@@ -278,6 +293,7 @@ def main(argv):
                                                'license': package_license, 'type': package_type,
                                                'url': url, 'description': description,
                                                'status': 'new'})
+                    new_packages += 1
                 else:
                     if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
                         description = oin_packages[package.lower()]['description']
@@ -285,6 +301,7 @@ def main(argv):
                                                    'license': package_license, 'type': package_type,
                                                    'url': url, 'description': description,
                                                    'status': 'update'})
+                    updates += 1
 
     elif listing_type == 'pip':
         with open(listing, 'r', encoding='utf-8') as pip_file:
@@ -306,17 +323,20 @@ def main(argv):
                             if p_name not in oin_packages:
                                 process = True
                                 status = 'new'
+                                new_packages += 1
                             else:
                                 if args.new_versions and oin_packages[p_name]['version'] < version:
                                     description = oin_packages[p_name]['description']
                                     package_name = p_name
                                     process = True
                                     status = 'update'
+                                    updates += 1
                         else:
                             if args.new_versions and oin_packages[package_name]['version'] < version:
                                 description = oin_packages[package_name]['description']
                                 process = True
                                 status = 'update'
+                                updates += 1
                         if process:
                             not_found_packages.append({'package': package_name, 'version': version,
                                                        'license': package_license, 'type': package_type,
@@ -348,17 +368,20 @@ def main(argv):
                     if p_name not in oin_packages:
                         process = True
                         status = 'new'
+                        new_packages += 1
                     else:
                         if args.new_versions and oin_packages[p_name]['version'] < version:
                             description = oin_packages[p_name]['description']
                             package_name = p_name
                             process = True
                             status = 'update'
+                            updates += 1
                 else:
                     if args.new_versions and oin_packages[package_name]['version'] < version:
                         description = oin_packages[p_name]['description']
                         process = True
                         status = 'update'
+                        updates += 1
                 if process:
                     not_found_packages.append({'package': package_name, 'version': version,
                                                'license': package_license, 'type': package_type,
@@ -464,6 +487,11 @@ def main(argv):
                                      project_download_url, p['url'], package_version_url,
                                      package_version_tag, p['description'], project,
                                      oss_platform, tech_area, old_name])
+
+    if args.summary:
+        print('SUMMARY\n')
+        print(f'New packages: {new_packages}')
+        print(f'Updated packages: {updates}')
 
 if __name__ == "__main__":
     main(sys.argv)

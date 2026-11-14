@@ -26,6 +26,7 @@ It contains the following features:
 * output includes:
   1. packages that are not included in the Linux System Definition
   2. updates to packages that are in the Linux System Definition (optional functionality, needs the `--new-versions` flag to be enabled when running)
+  3. a summary of how many found packages were new packages/updates with the `--summary` flag, only works when writing output files (not when printing to the terminal)
 
 # How to run
 
@@ -101,6 +102,21 @@ To create a CSV that can be directly sent to OIN with nominations use the `oin_c
 
 ```
 $ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.csv --output-type=oin_csv --new-versions
+```
+
+To print a summary:
+
+```
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.csv --output-type=oin_csv --new-versions
+```
+
+example output:
+
+```
+SUMMARY
+
+New packages: 475
+Updated packages: 882
 ```
 
 ## DEB
