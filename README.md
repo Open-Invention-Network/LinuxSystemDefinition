@@ -119,6 +119,14 @@ New packages: 475
 Updated packages: 882
 ```
 
+Caution: by default the script will not overwrite an already existing output
+file. To overwrite it (assuming that it can be overwritten), use the `--force`
+option:
+
+```
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.csv --output-type=oin_csv --new-versions --force
+```
+
 ## DEB
 
 ```

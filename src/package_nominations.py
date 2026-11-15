@@ -50,6 +50,9 @@ def main(argv):
     parser.add_argument("--summary", action="store_true", dest="summary",
                         help="Create a summary (only use with --out)")
 
+    parser.add_argument("--force", action="store_true", dest="force",
+                        help="Overwrite output file")
+
     args = parser.parse_args()
 
     if not args.listing:
@@ -67,7 +70,7 @@ def main(argv):
 
     if args.out_path:
         out = pathlib.Path(args.out_path)
-        if out.exists():
+        if out.exists() and not args.force:
             parser.error(f"Path '{out}' already exists")
 
     if args.summary and not args.out_path:
