@@ -107,7 +107,7 @@ $ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/t
 To print a summary:
 
 ```
-$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.csv --output-type=oin_csv --new-versions
+$ python package_nominations.py -l /tmp/rpm -c table-13_2026-02-25.csv -o /tmp/tool_output.csv --output-type=oin_csv --new-versions --summary
 ```
 
 example output:
