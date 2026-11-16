@@ -1,14 +1,16 @@
 # A Tool to Check OIN Linux System Definition Table 13 Coverage in RPM/DEB/PIP/buildroot/Alpine Package Managers
 
-This tool compares the output of various package managers (RPM, DEB, PIP) with OIN Linux System Definition (LSD) Table 13 and provides output on which packages are not covered by the LSD Table 13.
+This tool compares the output of various package managers (RPM, DEB, PIP, buildroot, Alpine) with OIN Linux System Definition (LSD) Table 13 and provides output on which packages are not covered by the LSD Table 13.
 
 The purpose of this script is to help companies quickly and easily compile a list of packages they use which are not covered under the LSD, and to then submit these packages to the OIN team for potential inclusion. This will increase the amount of patent non-aggression coverage in the OIN community over time.
 
 It has been kept as simple as possible regarding dependencies so it can run on a wide range of systems. It does not have to run on the same machine as the package managers, so it can be used for testing various systems from one workstation.
 
+The tool accepts single files with output from package managers, or an entire directory with (possibly many) output files from various package managers.
+
 # Summary and latest changes
 
-The latest version of the tool is 2.0.2
+The latest version of the tool is 2.2.0
 
 It contains the following features:
 
@@ -51,6 +53,8 @@ and then switch to the desired tag:
 ```
 $ git checkout 2.0
 ```
+
+The script accepts both single package manager files as well as directories with package manager files. Both options use the option `-l` for this functionality. This will allow a user to process large amounts of outputs from many different systems at once.
 
 ## Getting the latest Linux System definition
 
