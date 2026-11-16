@@ -401,7 +401,7 @@ def main(argv):
                                         status = 'update'
                                         updates += 1
                             else:
-                                if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
+                                if args.new_versions and compare_versions(oin_packages[package_name]['version'], version):
                                     description = oin_packages[package_name]['description']
                                     process = True
                                     status = 'update'
@@ -446,8 +446,8 @@ def main(argv):
                                 status = 'update'
                                 updates += 1
                     else:
-                        if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
-                            description = oin_packages[p_name]['description']
+                        if args.new_versions and compare_versions(oin_packages[package_name]['version'], version):
+                            description = oin_packages[package_name]['description']
                             process = True
                             status = 'update'
                             updates += 1
