@@ -22,6 +22,7 @@ ALIASES = {'bind9': 'bind',
            'iproute': 'iproute2',
            'libcap2': 'libcap',
            'libonig': 'oniguruma',
+           'pcre2': 'pcre',
            'python3.12': 'python',
            'requests': 'python-requests',
           }
