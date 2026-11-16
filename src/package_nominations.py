@@ -160,6 +160,9 @@ def main(argv):
     # manager (i.e. output of different package managers has not been mixed).
     with open(listing, 'r', encoding='utf-8') as package_manager_file:
         for line in package_manager_file:
+            if '"DEPENDENCIES WITH LICENSES"' in line:
+                listing_type = 'buildroot'
+                break
             if ':' in line:
                 key = line.split(':', maxsplit=1)[0].strip()
                 if key in ['APT-Sources', 'APT-Manual-Installed']:
@@ -431,6 +434,31 @@ def main(argv):
                                                'url': url, 'description': description,
                                                'status': status})
 
+    elif listing_type == 'buildroot':
+        package_type = 'buildroot'
+        with open(listing, encoding='utf-8') as csv_file:
+            csv_reader = csv.reader(csv_file)
+            is_first = True
+            for line in csv_reader:
+                if is_first:
+                    is_first = False
+                    continue
+                package, version, package_license, license_files, source_archive, source_site, dependencies = line
+                package = ALIASES.get(package, package)
+                if package.lower() not in oin_packages:
+                    not_found_packages.append({'package': package, 'version': version,
+                                               'license': package_license, 'type': package_type,
+                                               'url': source_site, 'description': '',
+                                               'status': 'new'})
+                    new_packages += 1
+                else:
+                    if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
+                        description = oin_packages[package.lower()]['description']
+                        not_found_packages.append({'package': package, 'version': version,
+                                                   'license': package_license, 'type': package_type,
+                                                   'url': source_site, 'description': description,
+                                                   'status': 'update'})
+                    updates += 1
 
     if args.out_type == 'txt':
         if args.out_path:
