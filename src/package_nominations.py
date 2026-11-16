@@ -27,6 +27,46 @@ ALIASES = {'bind9': 'bind',
           }
 
 
+def compare_versions(version_1, version_2):
+    '''Compare versions in a slightly more intelligent way than
+       just a string comparison. This requires that the versions
+       actually can be compared. If this is not the case, then
+       this method will fall back to just a string comparison.
+       Returns if version_1 is smaller than version_2.'''
+
+    if version_1 == version_2:
+        return False
+
+    # First try to see the string can be split in individual
+    # components and if there are known "dividers" (such as '.')
+    if '.' in version_1 and '.' in version_2:
+        version_1_splits = version_1.split('.')
+        version_2_splits = version_2.split('.')
+        if len(version_1_splits) != len(version_2_splits):
+            # versions cannot be compared as the
+            # versions are formatted differently
+            return version_1 < version_2
+        for v1, v2 in zip(version_1_splits, version_2_splits):
+            try:
+                v1_cast = int(v1)
+                v2_cast = int(v2)
+            except:
+                v1_cast = v1
+                v2_cast = v2
+            if v1_cast < v2_cast:
+                return True
+    else:
+        try:
+            v1_cast = int(version_1)
+            v2_cast = int(version_2)
+        except:
+            v1_cast = version_1
+            v2_cast = version_2
+        if v1_cast < v2_cast:
+            return True
+
+    return False
+
 def main(argv):
     parser = argparse.ArgumentParser()
 
@@ -183,7 +223,7 @@ def main(argv):
                                                            'status': 'new'})
                                 new_packages += 1
                             else:
-                                if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                                if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
                                     description = oin_packages[package.lower()]['description']
                                     not_found_packages.append({'package': package, 'version': version,
                                                                'license': package_license,
@@ -215,7 +255,7 @@ def main(argv):
                                                'status': 'new'})
                     new_packages += 1
                 else:
-                    if args.new_versions and oin_packages[package.lower()]['version'] < version:
+                    if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
                         description = oin_packages[package.lower()]['description']
                         not_found_packages.append({'package': package, 'version': version,
                                                    'license': package_license, 'type': package_type,
@@ -255,7 +295,7 @@ def main(argv):
                                                            'status': 'new'})
                                 new_packages += 1
                             else:
-                                if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
+                                if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], deb_version):
                                     description = oin_packages[package.lower()]['description']
                                     not_found_packages.append({'package': package, 'version': version,
                                                                'license': package_license,
@@ -298,7 +338,7 @@ def main(argv):
                                                'status': 'new'})
                     new_packages += 1
                 else:
-                    if args.new_versions and oin_packages[package.lower()]['version'] < deb_version:
+                    if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], deb_version):
                         description = oin_packages[package.lower()]['description']
                         not_found_packages.append({'package': package, 'version': version,
                                                    'license': package_license, 'type': package_type,
@@ -328,14 +368,14 @@ def main(argv):
                                 status = 'new'
                                 new_packages += 1
                             else:
-                                if args.new_versions and oin_packages[p_name]['version'] < version:
+                                if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
                                     description = oin_packages[p_name]['description']
                                     package_name = p_name
                                     process = True
                                     status = 'update'
                                     updates += 1
                         else:
-                            if args.new_versions and oin_packages[package_name]['version'] < version:
+                            if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
                                 description = oin_packages[package_name]['description']
                                 process = True
                                 status = 'update'
@@ -373,14 +413,14 @@ def main(argv):
                         status = 'new'
                         new_packages += 1
                     else:
-                        if args.new_versions and oin_packages[p_name]['version'] < version:
+                        if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
                             description = oin_packages[p_name]['description']
                             package_name = p_name
                             process = True
                             status = 'update'
                             updates += 1
                 else:
-                    if args.new_versions and oin_packages[package_name]['version'] < version:
+                    if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
                         description = oin_packages[p_name]['description']
                         process = True
                         status = 'update'
