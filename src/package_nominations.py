@@ -164,9 +164,6 @@ def main(argv):
 
     not_found_packages = []
 
-    updates = 0
-    new_packages = 0
-
     # first try to determine the format. It is assumed that the entire
     # file with package manager information is coming from a single package
     # manager (i.e. output of different package managers has not been mixed).
@@ -247,7 +244,6 @@ def main(argv):
                                                                'type': package_type, 'url': url,
                                                                'description': description,
                                                                'status': 'new'})
-                                    new_packages += 1
                                 else:
                                     if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
                                         description = oin_packages[package.lower()]['description']
@@ -256,7 +252,6 @@ def main(argv):
                                                                    'type': package_type, 'url': url,
                                                                    'description': description,
                                                                    'status': 'update'})
-                                    updates += 1
                             rpm_packages_seen.add(package)
 
                         # as a placeholder record as some packages do not have
@@ -279,7 +274,6 @@ def main(argv):
                                                    'license': package_license, 'type': package_type,
                                                    'url': url, 'description': description,
                                                    'status': 'new'})
-                        new_packages += 1
                     else:
                         if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
                             description = oin_packages[package.lower()]['description']
@@ -287,7 +281,6 @@ def main(argv):
                                                        'license': package_license, 'type': package_type,
                                                        'url': url, 'description': description,
                                                        'status': 'update'})
-                        updates += 1
 
         elif listing_type == 'deb':
             # walk the Deb listing. Use the "Package" attribute to determine
@@ -319,7 +312,6 @@ def main(argv):
                                                                'type': package_type, 'url': url,
                                                                'description': description,
                                                                'status': 'new'})
-                                    new_packages += 1
                                 else:
                                     if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], deb_version):
                                         description = oin_packages[package.lower()]['description']
@@ -328,7 +320,6 @@ def main(argv):
                                                                    'type': package_type, 'url': url,
                                                                    'description': description,
                                                                    'status': 'update'})
-                                    updates += 1
                             deb_packages_seen.add(package)
 
                         # parse the package name, reset all other fields for a new package.
@@ -362,7 +353,6 @@ def main(argv):
                                                    'license': package_license, 'type': package_type,
                                                    'url': url, 'description': description,
                                                    'status': 'new'})
-                        new_packages += 1
                     else:
                         if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], deb_version):
                             description = oin_packages[package.lower()]['description']
@@ -370,7 +360,6 @@ def main(argv):
                                                        'license': package_license, 'type': package_type,
                                                        'url': url, 'description': description,
                                                        'status': 'update'})
-                        updates += 1
 
         elif listing_type == 'pip':
             with open(package_listing, 'r', encoding='utf-8') as pip_file:
@@ -392,20 +381,17 @@ def main(argv):
                                 if p_name not in oin_packages:
                                     process = True
                                     status = 'new'
-                                    new_packages += 1
                                 else:
                                     if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
                                         description = oin_packages[p_name]['description']
                                         package_name = p_name
                                         process = True
                                         status = 'update'
-                                        updates += 1
                             else:
                                 if args.new_versions and compare_versions(oin_packages[package_name]['version'], version):
                                     description = oin_packages[package_name]['description']
                                     process = True
                                     status = 'update'
-                                    updates += 1
                             if process:
                                 not_found_packages.append({'package': package_name, 'version': version,
                                                            'license': package_license, 'type': package_type,
@@ -437,20 +423,17 @@ def main(argv):
                         if p_name not in oin_packages:
                             process = True
                             status = 'new'
-                            new_packages += 1
                         else:
                             if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
                                 description = oin_packages[p_name]['description']
                                 package_name = p_name
                                 process = True
                                 status = 'update'
-                                updates += 1
                     else:
                         if args.new_versions and compare_versions(oin_packages[package_name]['version'], version):
                             description = oin_packages[package_name]['description']
                             process = True
                             status = 'update'
-                            updates += 1
                     if process:
                         not_found_packages.append({'package': package_name, 'version': version,
                                                    'license': package_license, 'type': package_type,
@@ -473,7 +456,6 @@ def main(argv):
                                                    'license': package_license, 'type': package_type,
                                                    'url': source_site, 'description': '',
                                                    'status': 'new'})
-                        new_packages += 1
                     else:
                         if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
                             description = oin_packages[package.lower()]['description']
@@ -481,7 +463,6 @@ def main(argv):
                                                        'license': package_license, 'type': package_type,
                                                        'url': source_site, 'description': description,
                                                        'status': 'update'})
-                        updates += 1
 
         elif listing_type == 'alpine':
             package_type = 'alpine'
@@ -496,7 +477,6 @@ def main(argv):
                                                    'url': alpine_package['url'],
                                                    'description': alpine_package['description'],
                                                    'status': 'new'})
-                        new_packages += 1
                     else:
                         if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
                             description = oin_packages[package.lower()]['description']
@@ -505,7 +485,17 @@ def main(argv):
                                                        'url': alpine_package['url'],
                                                        'description': description,
                                                        'status': 'update'})
-                        updates += 1
+
+    # deduplicate not_found_packages
+    seen = set()
+    new_not_found_packages = []
+    for p in not_found_packages:
+        if (p['package'], p['version']) in seen:
+            continue
+        seen.add((p['package'], p['version']))
+        new_not_found_packages.append(p)
+
+    not_found_packages = new_not_found_packages
 
     if args.out_type == 'txt':
         if args.out_path:
@@ -607,6 +597,13 @@ def main(argv):
                                      oss_platform, tech_area, old_name])
 
     if args.summary:
+        new_packages = 0
+        updates = 0
+        for p in not_found_packages:
+            if p['status'] == 'new':
+                new_packages += 1
+            if p['status'] == 'update':
+                updates += 1
         print('SUMMARY\n')
         print(f'New packages: {new_packages}')
         print(f'Updated packages: {updates}')
