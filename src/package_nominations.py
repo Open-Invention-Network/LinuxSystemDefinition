@@ -607,6 +607,7 @@ def main(argv):
         print('SUMMARY\n')
         print(f'New packages: {new_packages}')
         print(f'Updated packages: {updates}')
+        print(f'New and updated packages: {new_packages + updates}')
 
 if __name__ == "__main__":
     main(sys.argv)
