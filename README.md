@@ -1,4 +1,4 @@
-# A Tool to Check OIN Linux System Definition Table 13 Coverage in RPM/DEB/PIP Package Managers
+# A Tool to Check OIN Linux System Definition Table 13 Coverage in RPM/DEB/PIP/buildroot/Alpine Package Managers
 
 This tool compares the output of various package managers (RPM, DEB, PIP) with OIN Linux System Definition (LSD) Table 13 and provides output on which packages are not covered by the LSD Table 13.
 
@@ -12,10 +12,12 @@ The latest version of the tool is 2.0.2
 
 It contains the following features:
 
-* processes output of three package managers:
+* processes output of the following package managers:
   1. rpm - used on Fedora, RHEL, SUSE and other RPM-based Linux systems
   2. deb - used on Debian, Ubuntu and other DEB-based Linux systems
   3. pip - used for installing Python packages
+  4. alpine - used on Alpine Linux
+  5. buildroot - embedded Linux built with buildroot
 
 * output of data in four formats:
   1. text - key/value pair output
