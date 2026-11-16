@@ -152,6 +152,12 @@ for the file `manifest.csv` and use it as an input.
 $ python package_nominations.py -l /tmp/manifest.csv -c table-13_2026-02-25.csv
 ```
 
+## Alpine
+
+```
+# apk info --format=json
+```
+
 ## Shortcomings
 
 Some packages may have been renamed (for example: `pcre2`) so those are "false positives". This is not a concern, and you can just submit the output of this tool with such packages included. The OIN team will filter the output for you. 
