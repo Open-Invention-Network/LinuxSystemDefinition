@@ -164,6 +164,9 @@ def main(argv):
             if '"DEPENDENCIES WITH LICENSES"' in line:
                 listing_type = 'buildroot'
                 break
+            if '"installed-size":' in line:
+                listing_type = 'alpine'
+                break
             if ':' in line:
                 key = line.split(':', maxsplit=1)[0].strip()
                 if key in ['APT-Sources', 'APT-Manual-Installed']:
@@ -458,6 +461,30 @@ def main(argv):
                         not_found_packages.append({'package': package, 'version': version,
                                                    'license': package_license, 'type': package_type,
                                                    'url': source_site, 'description': description,
+                                                   'status': 'update'})
+                    updates += 1
+
+    elif listing_type == 'alpine':
+        package_type = 'alpine'
+        with open(listing, encoding='utf-8') as package_file:
+            alpine_packages = json.load(package_file)
+            for alpine_package in alpine_packages:
+                package = ALIASES.get(alpine_package['name'], alpine_package['name'])
+                version = alpine_package['version'].rsplit('-', maxsplit=1)[0]
+                if package.lower() not in oin_packages:
+                    not_found_packages.append({'package': package, 'version': version,
+                                               'license': '', 'type': package_type,
+                                               'url': alpine_package['url'],
+                                               'description': alpine_package['description'],
+                                               'status': 'new'})
+                    new_packages += 1
+                else:
+                    if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
+                        description = oin_packages[package.lower()]['description']
+                        not_found_packages.append({'package': package, 'version': version,
+                                                   'license': '', 'type': package_type,
+                                                   'url': alpine_package['url'],
+                                                   'description': description,
                                                    'status': 'update'})
                     updates += 1
 
