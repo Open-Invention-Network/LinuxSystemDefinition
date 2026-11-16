@@ -444,6 +444,7 @@ def main(argv):
                     is_first = False
                     continue
                 package, version, package_license, license_files, source_archive, source_site, dependencies = line
+                package = ALIASES.get(package, package)
                 if package.lower() not in oin_packages:
                     not_found_packages.append({'package': package, 'version': version,
                                                'license': package_license, 'type': package_type,
