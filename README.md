@@ -10,7 +10,7 @@ The tool accepts single files with output from package managers, or an entire di
 
 # Summary and latest changes
 
-The latest version of the tool is 2.2.0
+The latest version of the tool is 2.3.0
 
 It contains the following features:
 

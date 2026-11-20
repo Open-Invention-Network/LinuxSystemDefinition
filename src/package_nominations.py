@@ -27,6 +27,7 @@ ALIASES = {'bind9': 'bind',
            'requests': 'python-requests',
           }
 
+TOOL_VERSION='2.3.0'
 
 def compare_versions(version_1, version_2):
     '''Compare versions in a slightly more intelligent way than
@@ -517,6 +518,7 @@ def main(argv):
         if (p['package'], p['version']) in seen:
             continue
         seen.add((p['package'], p['version']))
+        p['tool'] = f'package-nominations.py-{TOOL_VERSION}'
         new_not_found_packages.append(p)
 
     not_found_packages = new_not_found_packages
@@ -547,6 +549,8 @@ def main(argv):
                         out_file.write('\n')
                         out_file.write(f"Status: {p['status']}")
                         out_file.write('\n')
+                        out_file.write(f"Tool: {p['tool']}")
+                        out_file.write('\n')
                         out_file.write(f"Package type: {p['type']}\n\n")
             except Exception as e:
                 print(f'{e}, exiting.', file=sys.stderr)
@@ -558,6 +562,7 @@ def main(argv):
                 print(f"License: {p['license']}")
                 print(f"URL: {p['url']}")
                 print(f"Status: {p['status']}")
+                print(f"Tool: {p['tool']}")
                 print(f"Package type: {p['type']}\n")
     elif args.out_type == 'json':
         if args.out_path:
@@ -570,7 +575,7 @@ def main(argv):
         else:
             print(json.dumps(not_found_packages, indent=4))
     elif args.out_type == 'csv':
-        column_names = ['Name', 'Version', 'License', 'URL', 'Status', 'Type']
+        column_names = ['Name', 'Version', 'License', 'URL', 'Status', 'Type', 'OIN_id']
         if args.out_path:
             try:
                 with open(args.out_path, 'w', encoding='utf-8', newline='') as csvfile:
@@ -578,7 +583,7 @@ def main(argv):
                     csv_writer.writerow(column_names)
                     for p in sorted(not_found_packages, key=lambda x: x['package']):
                         csv_writer.writerow([p['package'], p['version'], p['license'],
-                                             p['url'], p['status'], p['type']])
+                                             p['url'], p['status'], p['type'], p['tool']])
             except Exception as e:
                 print(f'{e}, exiting.', file=sys.stderr)
                 sys.exit(1)
@@ -587,7 +592,7 @@ def main(argv):
             csv_writer.writerow(column_names)
             for p in sorted(not_found_packages, key=lambda x: x['package']):
                 csv_writer.writerow([p['package'], p['version'], p['license'],
-                                     p['url'], p['status'], p['type']])
+                                     p['url'], p['status'], p['type'], p['tool']])
     elif args.out_type == 'oin_csv':
         column_names = ['Number', 'Package Name', 'Nominated By...', 'Nomination type',
                         'Nominator comments', 'Version', 'License', 'Project Download URL',
