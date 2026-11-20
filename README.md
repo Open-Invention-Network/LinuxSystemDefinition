@@ -31,6 +31,18 @@ It contains the following features:
   1. packages that are not included in the Linux System Definition
   2. updates to packages that are in the Linux System Definition (optional functionality, needs the `--new-versions` flag to be enabled when running)
   3. a summary of how many found packages were new packages/updates with the `--summary` flag, only works when writing output files (not when printing to the terminal)
+  4. a list of the packages that are covered (meaning they are in the Linux System Definition) with the `--covered` flag, or the number of covered packages when combined with `--summary`
+
+The list of covered packages is an indication and for information purposes only.
+
+Some of these packages may be newer versions of the version that is listed in an
+adopted table of the Linux System definition. If there is new functionality in
+such a package, the portion of the software package that contains new
+functionality must be evaluated as if it represents a separate component that
+is distinct from the earlier version already present in a previously adopted
+table of the Linux System definition. Such new functionality is not included
+in the Linux System definition until the package version that incorporates
+such new functionality is explicitly adopted into the Linux System.
 
 # How to run
 

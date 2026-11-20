@@ -95,6 +95,9 @@ def main(argv):
     parser.add_argument("--force", action="store_true", dest="force",
                         help="Overwrite output file")
 
+    parser.add_argument("--covered", action="store_true", dest="covered",
+                        help="Count covered packages")
+
     args = parser.parse_args()
 
     if not args.listing:
@@ -163,6 +166,7 @@ def main(argv):
                     package_files.append(top / ll)
 
     not_found_packages = []
+    covered_packages = []
 
     # first try to determine the format. It is assumed that the entire
     # file with package manager information is coming from a single package
@@ -245,7 +249,9 @@ def main(argv):
                                                                'description': description,
                                                                'status': 'new'})
                                 else:
-                                    if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
+                                    if not compare_versions(oin_packages[package.lower()]['version'], version):
+                                        covered_packages.append(oin_packages[package.lower()])
+                                    elif args.new_versions:
                                         description = oin_packages[package.lower()]['description']
                                         not_found_packages.append({'package': package, 'version': version,
                                                                    'license': package_license,
@@ -275,7 +281,9 @@ def main(argv):
                                                    'url': url, 'description': description,
                                                    'status': 'new'})
                     else:
-                        if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
+                        if not compare_versions(oin_packages[package.lower()]['version'], version):
+                            covered_packages.append(oin_packages[package.lower()])
+                        elif args.new_versions:
                             description = oin_packages[package.lower()]['description']
                             not_found_packages.append({'package': package, 'version': version,
                                                        'license': package_license, 'type': package_type,
@@ -313,7 +321,9 @@ def main(argv):
                                                                'description': description,
                                                                'status': 'new'})
                                 else:
-                                    if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], deb_version):
+                                    if not compare_versions(oin_packages[package.lower()]['version'], deb_version):
+                                        covered_packages.append(oin_packages[package.lower()])
+                                    elif args.new_versions:
                                         description = oin_packages[package.lower()]['description']
                                         not_found_packages.append({'package': package, 'version': version,
                                                                    'license': package_license,
@@ -354,7 +364,9 @@ def main(argv):
                                                    'url': url, 'description': description,
                                                    'status': 'new'})
                     else:
-                        if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], deb_version):
+                        if not compare_versions(oin_packages[package.lower()]['version'], deb_version):
+                            covered_packages.append(oin_packages[package.lower()])
+                        elif args.new_versions:
                             description = oin_packages[package.lower()]['description']
                             not_found_packages.append({'package': package, 'version': version,
                                                        'license': package_license, 'type': package_type,
@@ -382,13 +394,17 @@ def main(argv):
                                     process = True
                                     status = 'new'
                                 else:
-                                    if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
+                                    if not compare_versions(oin_packages[p_name]['version'], version):
+                                        covered_packages.append(oin_packages[p_name])
+                                    elif args.new_versions:
                                         description = oin_packages[p_name]['description']
                                         package_name = p_name
                                         process = True
                                         status = 'update'
                             else:
-                                if args.new_versions and compare_versions(oin_packages[package_name]['version'], version):
+                                if not compare_versions(oin_packages[package_name]['version'], version):
+                                    covered_packages.append(oin_packages[package_name])
+                                elif args.new_versions:
                                     description = oin_packages[package_name]['description']
                                     process = True
                                     status = 'update'
@@ -424,13 +440,17 @@ def main(argv):
                             process = True
                             status = 'new'
                         else:
-                            if args.new_versions and compare_versions(oin_packages[p_name]['version'], version):
+                            if not compare_versions(oin_packages[p_name]['version'], version):
+                                covered_packages.append(oin_packages[p_name])
+                            elif args.new_versions:
                                 description = oin_packages[p_name]['description']
                                 package_name = p_name
                                 process = True
                                 status = 'update'
                     else:
-                        if args.new_versions and compare_versions(oin_packages[package_name]['version'], version):
+                        if not compare_versions(oin_packages[package_name]['version'], version):
+                            covered_packages.append(oin_packages[package_name])
+                        elif args.new_versions:
                             description = oin_packages[package_name]['description']
                             process = True
                             status = 'update'
@@ -457,7 +477,9 @@ def main(argv):
                                                    'url': source_site, 'description': '',
                                                    'status': 'new'})
                     else:
-                        if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
+                        if not compare_versions(oin_packages[package.lower()]['version'], version):
+                            covered_packages.append(oin_packages[package.lower()])
+                        elif args.new_versions:
                             description = oin_packages[package.lower()]['description']
                             not_found_packages.append({'package': package, 'version': version,
                                                        'license': package_license, 'type': package_type,
@@ -478,7 +500,9 @@ def main(argv):
                                                    'description': alpine_package['description'],
                                                    'status': 'new'})
                     else:
-                        if args.new_versions and compare_versions(oin_packages[package.lower()]['version'], version):
+                        if not compare_versions(oin_packages[package.lower()]['version'], version):
+                            covered_packages.append(oin_packages[package.lower()])
+                        elif args.new_versions:
                             description = oin_packages[package.lower()]['description']
                             not_found_packages.append({'package': package, 'version': version,
                                                        'license': '', 'type': package_type,
@@ -496,6 +520,17 @@ def main(argv):
         new_not_found_packages.append(p)
 
     not_found_packages = new_not_found_packages
+
+    # deduplicate covered_packages
+    seen = set()
+    new_covered_packages = []
+    for p in covered_packages:
+        if (p['name'], p['version']) in seen:
+            continue
+        seen.add((p['name'], p['version']))
+        new_covered_packages.append(p)
+
+    covered_packages = new_covered_packages
 
     if args.out_type == 'txt':
         if args.out_path:
@@ -608,6 +643,14 @@ def main(argv):
         print(f'New packages: {new_packages}')
         print(f'Updated packages: {updates}')
         print(f'New and updated packages: {new_packages + updates}')
+        if args.covered:
+            print(f'Covered packages: {len(covered_packages)}')
+    else:
+        if args.covered:
+            for p in sorted(covered_packages, key=lambda x: x['name']):
+                print(f'Covered: {p["name"]} {p["version"]}')
+
+
 
 if __name__ == "__main__":
     main(sys.argv)
