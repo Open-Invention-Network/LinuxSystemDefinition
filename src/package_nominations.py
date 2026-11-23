@@ -597,12 +597,14 @@ def main(argv):
         column_names = ['Number', 'Package Name', 'Nominated By...', 'Nomination type',
                         'Nominator comments', 'Version', 'License', 'Project Download URL',
                         'Project URL', 'Package Version URL', 'Package Version tag',
-                        'Description', 'Project', 'OSS Platform', 'TechArea', 'Old name']
+                        'Description', 'Project', 'OSS Platform', 'TechArea', 'Old name',
+                        'Source']
 
         # default values for columns. These will most likely not be used
         number = nominated_by = nomination_comments = project_download_url = ''
         package_version_url = package_version_tag = ''
         project = oss_platform = tech_area = old_name = ''
+        source = f'package_nominations.py-{TOOL_VERSION}'
 
         if args.out_path:
             try:
@@ -618,7 +620,7 @@ def main(argv):
                                              nomination_comments, p['version'], p['license'],
                                              project_download_url, p['url'], package_version_url,
                                              package_version_tag, p['description'], project,
-                                             oss_platform, tech_area, old_name])
+                                             oss_platform, tech_area, old_name, source])
             except Exception as e:
                 print(f'{e}, exiting.', file=sys.stderr)
                 sys.exit(1)
@@ -634,7 +636,7 @@ def main(argv):
                                      nomination_comments, p['version'], p['license'],
                                      project_download_url, p['url'], package_version_url,
                                      package_version_tag, p['description'], project,
-                                     oss_platform, tech_area, old_name])
+                                     oss_platform, tech_area, old_name, source])
 
     if args.summary:
         new_packages = 0
