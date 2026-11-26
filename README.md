@@ -1,6 +1,6 @@
 # A Tool to Check OIN Linux System Definition Table 13 Coverage in RPM/DEB/PIP/buildroot/Alpine Package Managers
 
-This tool compares the output of various package managers (RPM, DEB, PIP, buildroot, Alpine) with OIN Linux System Definition (LSD) Table 13 and provides output on which packages are not covered by the LSD Table 13.
+This tool compares the output of various package managers (RPM, DEB, PIP, buildroot, Alpine, Yocto SPDX) with OIN Linux System Definition (LSD) Table 13 and provides output on which packages are not covered by the LSD Table 13.
 
 The purpose of this script is to help companies quickly and easily compile a list of packages they use which are not covered under the LSD, and to then submit these packages to the OIN team for potential inclusion. This will increase the amount of patent non-aggression coverage in the OIN community over time.
 
