@@ -27,7 +27,7 @@ ALIASES = {'bind9': 'bind',
            'requests': 'python-requests',
           }
 
-TOOL_VERSION='2.3.0'
+TOOL_VERSION='2.4.0'
 
 def compare_versions(version_1, version_2):
     '''Compare versions in a slightly more intelligent way than
@@ -177,6 +177,9 @@ def main(argv):
         with open(package_listing, 'r', encoding='utf-8') as package_manager_file:
             try:
                 for line in package_manager_file:
+                    if '"https://spdx.org/rdf/3.0.1/spdx-context.jsonld"' in line:
+                        listing_type = 'spdx301_jsonld'
+                        break
                     if '"DEPENDENCIES WITH LICENSES"' in line:
                         listing_type = 'buildroot'
                         break
@@ -509,6 +512,37 @@ def main(argv):
                                                        'license': '', 'type': package_type,
                                                        'url': alpine_package['url'],
                                                        'description': description,
+                                                       'status': 'update'})
+        elif listing_type == 'spdx301_jsonld':
+            package_type = 'yocto_spdx'
+            with open(package_listing, encoding='utf-8') as package_file:
+                yocto_json = json.load(package_file)
+                if '@graph' not in yocto_json:
+                    continue
+                for pkg in yocto_json['@graph']:
+                    if pkg['type'] != 'software_Package':
+                        continue
+                    if 'software_packageVersion' not in pkg:
+                        continue
+                    if pkg['software_primaryPurpose'] != 'install':
+                        continue
+                    package = pkg['name']
+                    version = pkg['software_packageVersion']
+                    url = pkg.get('software_homePage', '')
+                    description = pkg['description']
+                    if package.lower() not in oin_packages:
+                        not_found_packages.append({'package': package, 'version': version,
+                                                   'license': '', 'type': package_type,
+                                                   'url': url, 'description': description,
+                                                   'status': 'new'})
+                    else:
+                        if not compare_versions(oin_packages[package.lower()]['version'], version):
+                            covered_packages.append(oin_packages[package.lower()])
+                        elif args.new_versions:
+                            description = oin_packages[package.lower()]['description']
+                            not_found_packages.append({'package': package, 'version': version,
+                                                       'license': '', 'type': package_type,
+                                                       'url': url, 'description': description,
                                                        'status': 'update'})
 
     # deduplicate not_found_packages
